@@ -6,6 +6,17 @@ import { WatchTrailerButton } from "@/features/watch/components/watch-trailer-bu
 import { formatDuration, formatViews } from "@/lib/utils";
 import type { FeaturedTitle, PlatformStat, Video } from "@/types/domain";
 
+/**
+ * The backend sends every hero stat label in the plural ("Videos",
+ * "Creators", "Views"). Drop the trailing "s" when the value is exactly one,
+ * so a fresh catalogue reads "1 Creator" instead of "1 Creators". Compact
+ * values like "1.2K" are never one, so they stay plural.
+ */
+function statLabel(value: string, label: string): string {
+  const isOne = Number(value) === 1;
+  return isOne && label.endsWith("s") ? label.slice(0, -1) : label;
+}
+
 /** Genre, runtime, and views for the featured title, from real values only. */
 function featuredMeta(video: Video): string {
   return [
@@ -41,6 +52,9 @@ export function FeaturedHero({
     <section className="relative -mt-14 overflow-hidden lg:-mt-16">
       <div className="absolute inset-0">
         {backdropSrc && (
+          // `animate-backdrop` eases the art from a hair over-scale to rest on
+          // load, giving the still frame a sense of depth. Transform-only, and
+          // the reduced-motion reset settles it instantly at scale(1).
           <Image
             src={backdropSrc}
             alt=""
@@ -49,7 +63,7 @@ export function FeaturedHero({
             sizes="100vw"
             // Narrow screens keep the right of the frame (where the subject
             // usually sits) out from under the text; wide screens centre it.
-            className="object-cover object-[70%_center] lg:object-center"
+            className="animate-backdrop object-cover object-[70%_center] lg:object-center"
           />
         )}
         {/* Readability scrims. Below `lg` the copy sits over the whole frame,
@@ -61,15 +75,15 @@ export function FeaturedHero({
 
       <div className="relative mx-auto grid min-h-[620px] max-w-[1400px] items-center gap-10 px-4 pb-16 pt-28 sm:px-8 lg:grid-cols-[1.2fr_1fr] lg:pt-32">
         <div className="max-w-xl">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+          <p className="animate-enter enter-delay-1 text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
             AI-powered drama universe
           </p>
-          <h1 className="mt-4 font-display text-5xl leading-[1.02] text-foreground sm:text-6xl">
+          <h1 className="animate-enter enter-delay-2 mt-4 font-display text-5xl leading-[1.02] text-foreground sm:text-6xl">
             Endless stories.
             <br />
             <span className="text-gradient">New worlds.</span>
           </h1>
-          <p className="mt-5 max-w-md text-base text-foreground/75">
+          <p className="animate-enter enter-delay-3 mt-5 max-w-md text-base text-foreground/75">
             Watch, create, and share AI-generated dramas in any genre, any
             language, anytime.
           </p>
@@ -91,7 +105,7 @@ export function FeaturedHero({
           )}
 
           {video && (
-            <div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-3 lg:mt-8">
+            <div className="animate-enter enter-delay-4 mt-6 flex flex-wrap items-center gap-x-5 gap-y-3 lg:mt-8">
               <Button size="lg" asChild className="shadow-lg shadow-primary/25">
                 <Link href={`/watch/${video.slug}`}>
                   <Play className="fill-current" aria-hidden="true" />
@@ -110,12 +124,14 @@ export function FeaturedHero({
             </div>
           )}
 
-          <dl className="mt-10 flex flex-wrap gap-x-10 gap-y-4">
+          <dl className="animate-enter enter-delay-5 mt-10 flex flex-wrap gap-x-10 gap-y-4">
             {stats.map((s) => (
               // `dt` must precede its `dd`; column-reverse puts the number on
               // top without reading the label twice to a screen reader.
               <div key={s.label} className="flex flex-col-reverse">
-                <dt className="text-xs text-muted-foreground">{s.label}</dt>
+                <dt className="text-xs text-muted-foreground">
+                  {statLabel(s.value, s.label)}
+                </dt>
                 <dd className="font-display text-2xl text-foreground">
                   {s.value}
                 </dd>
@@ -125,7 +141,7 @@ export function FeaturedHero({
         </div>
 
         {featured && video && (
-          <div className="hidden justify-self-end text-right lg:block">
+          <div className="animate-enter enter-delay-3 hidden justify-self-end text-right lg:block">
             <p className="font-editorial text-5xl leading-tight text-foreground">
               {video.title}
             </p>

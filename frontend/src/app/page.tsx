@@ -52,15 +52,20 @@ async function HomeContent() {
     <>
       <FeaturedHero featured={feed.featured} stats={feed.stats} />
 
+      {/* `reveal-on-scroll` lets each block materialize as it rises into view
+          (native scroll-driven animation; unsupported browsers and
+          reduced-motion users just see it in place). */}
       <div className="mx-auto flex w-full max-w-[1400px] flex-col gap-12 px-4 sm:px-8">
-        <GenreTiles />
+        <div className="reveal-on-scroll">
+          <GenreTiles />
+        </div>
 
-        <section>
+        <section className="reveal-on-scroll">
           <SectionHeader title="Trending AI dramas" href="/explore?sort=popular" />
           <Rail label="Trending AI dramas" videos={feed.trending} ranked />
         </section>
 
-        <section>
+        <section className="reveal-on-scroll">
           <SectionHeader
             title="AI originals"
             description="The newest titles from creators."

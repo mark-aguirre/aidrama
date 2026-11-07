@@ -32,6 +32,20 @@ export function VideoPlayer({
 
   useQualifiedView(videoRef, viewSlug, src);
 
+  // Stop playback and release the media source whenever the component
+  // unmounts. Without this, navigating away leaves the <video> element
+  // playing its audio in the background (the browser keeps a detached
+  // media element alive while it still has a source).
+  React.useEffect(() => {
+    const video = videoRef.current;
+    return () => {
+      if (!video) return;
+      video.pause();
+      video.removeAttribute("src");
+      video.load();
+    };
+  }, []);
+
   React.useEffect(() => {
     const video = videoRef.current;
     if (!video || !src) return;

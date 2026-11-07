@@ -116,8 +116,14 @@ export const detailsSchema = z.object({
   isAiGenerated: z.boolean(),
   thumbnail: z
     .instanceof(File, { error: "A thumbnail image is required." })
-    .refine((file) => checkThumbnailFile(file).ok, {
-      error: UNSUPPORTED_THUMBNAIL_MESSAGE,
+    // superRefine, not refine, so the specific reason survives: an image that
+    // compression could not shrink should say it is too large, not that its
+    // format is unsupported.
+    .superRefine((file, ctx) => {
+      const check = checkThumbnailFile(file);
+      if (!check.ok) {
+        ctx.addIssue({ code: "custom", message: check.message });
+      }
     }),
 });
 

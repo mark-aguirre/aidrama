@@ -113,6 +113,93 @@ body {
   display: none;
 }
 
+/*
+ * Motion ------------------------------------------------------------------
+ *
+ * House easing. A gentle spring-like ease-out for arrivals (fast start,
+ * soft settle, no overshoot — Jakub's production default) and a quicker
+ * ease-in for things leaving. Durations stay short so the browse surface
+ * feels responsive, not showy.
+ */
+:root {
+  --ease-arrive: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-depart: cubic-bezier(0.4, 0, 1, 1);
+}
+
+/*
+ * One-time "materialize" entrance: opacity + a short lift + a blur that
+ * resolves to sharp, so the element reads as coming into focus rather than
+ * just fading. The 100% state is the element's natural rendering, so when
+ * reduced-motion collapses the animation duration the element is simply
+ * shown in place.
+ */
+@keyframes materialize-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+    filter: blur(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+.animate-enter {
+  /* `backwards` holds the first keyframe during the stagger delay, so a
+     delayed element never flashes in before its turn. */
+  animation: materialize-up 0.55s var(--ease-arrive) backwards;
+}
+
+/* Hero stagger: each line arrives just after the one above it. Delays are
+   small — the whole sequence is under ~0.5s of offset. */
+.enter-delay-1 { animation-delay: 0.05s; }
+.enter-delay-2 { animation-delay: 0.12s; }
+.enter-delay-3 { animation-delay: 0.19s; }
+.enter-delay-4 { animation-delay: 0.26s; }
+.enter-delay-5 { animation-delay: 0.34s; }
+
+/*
+ * Hero backdrop settle: a slow, barely-perceptible push-in that gives the
+ * static art a sense of depth on load without reading as a "Ken Burns"
+ * gimmick. Transform-only, so it is cheap; held with `forwards`.
+ */
+@keyframes backdrop-settle {
+  from {
+    transform: scale(1.06);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+
+.animate-backdrop {
+  animation: backdrop-settle 1.4s var(--ease-arrive) forwards;
+}
+
+/*
+ * Reveal-on-scroll for the rail sections. Uses native scroll-driven
+ * animation where supported: the section materializes as it enters the
+ * viewport, then holds. `animation-fill-mode: both` + `animation-play-state`
+ * driven by the view-timeline keeps the final (natural) state once revealed.
+ *
+ * Progressive enhancement: browsers without `animation-timeline` support
+ * never apply the animation (the @supports guard), so content is just
+ * visible — no IntersectionObserver needed, nothing can get stuck hidden.
+ */
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .reveal-on-scroll {
+      animation: materialize-up linear both;
+      animation-timeline: view();
+      /* Play the arrival across the band where the section rises from the
+         bottom of the viewport into the lower third, then hold. */
+      animation-range: entry 0% cover 28%;
+    }
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

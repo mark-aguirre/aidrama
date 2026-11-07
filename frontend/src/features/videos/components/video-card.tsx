@@ -95,8 +95,11 @@ export function VideoCard({
           </span>
         )}
 
-        <span className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity duration-200 group-hover:opacity-100">
-          <span className="flex size-11 items-center justify-center rounded-full bg-primary/90 shadow-lg shadow-primary/30">
+        {/* Play affordance arrives on hover: fade + a small scale-up so it
+            reads as surfacing, not blinking on. The pl shift optically
+            centres the right-pointing triangle in its circle. */}
+        <span className="pointer-events-none absolute inset-0 flex items-center justify-center opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+          <span className="flex size-11 scale-90 items-center justify-center rounded-full bg-primary/90 pl-0.5 shadow-lg shadow-primary/30 transition-transform duration-200 group-hover:scale-100 motion-reduce:transition-none motion-reduce:group-hover:scale-100">
             <Play className="size-5 fill-white text-white" aria-hidden="true" />
           </span>
         </span>
