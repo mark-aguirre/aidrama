@@ -55,7 +55,7 @@ async function HomeContent() {
       {/* `reveal-on-scroll` lets each block materialize as it rises into view
           (native scroll-driven animation; unsupported browsers and
           reduced-motion users just see it in place). */}
-      <div className="mx-auto flex w-full max-w-[1400px] flex-col gap-12 px-4 sm:px-8">
+      <div className="mx-auto flex w-full max-w-[1760px] flex-col gap-12 px-4 sm:px-8">
         <div className="reveal-on-scroll">
           <GenreTiles />
         </div>
@@ -82,7 +82,7 @@ function HomeSkeleton() {
   return (
     <>
       <div className="-mt-14 h-[620px] animate-pulse bg-surface motion-reduce:animate-none lg:-mt-16" />
-      <div className="mx-auto flex w-full max-w-[1400px] flex-col gap-12 px-4 sm:px-8">
+      <div className="mx-auto flex w-full max-w-[1760px] flex-col gap-12 px-4 sm:px-8">
         <div className="flex gap-3">
           {Array.from({ length: 8 }).map((_, i) => (
             <div key={i} className="h-[72px] w-[92px] animate-pulse rounded-lg bg-surface-2" />

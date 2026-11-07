@@ -73,7 +73,7 @@ export function FeaturedHero({
         <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-background/40" />
       </div>
 
-      <div className="relative mx-auto grid min-h-[620px] max-w-[1400px] items-center gap-10 px-4 pb-16 pt-28 sm:px-8 lg:grid-cols-[1.2fr_1fr] lg:pt-32">
+      <div className="relative mx-auto grid min-h-[620px] max-w-[1760px] items-center gap-10 px-4 pb-16 pt-28 sm:px-8 lg:grid-cols-[1.2fr_1fr] lg:pt-32">
         <div className="max-w-xl">
           <p className="animate-enter enter-delay-1 text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
             AI-powered drama universe

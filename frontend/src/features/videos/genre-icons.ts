@@ -1,0 +1,37 @@
+import {
+  Clapperboard,
+  Drama,
+  Feather,
+  Film,
+  Fingerprint,
+  Ghost,
+  Heart,
+  Landmark,
+  Mountain,
+  Orbit,
+  Puzzle,
+  Sparkles,
+  Swords,
+  Theater,
+  Users,
+  type LucideIcon,
+} from "lucide-react";
+
+/** One icon per genre, shared by the home genre tiles and the filter pills. */
+export const GENRE_ICONS: Record<string, LucideIcon> = {
+  Action: Swords,
+  Adventure: Mountain,
+  Animation: Sparkles,
+  Comedy: Theater,
+  Crime: Fingerprint,
+  Documentary: Film,
+  Drama: Clapperboard,
+  Fantasy: Feather,
+  Horror: Ghost,
+  Mystery: Puzzle,
+  Romance: Heart,
+  "Science Fiction": Orbit,
+  Thriller: Drama,
+  Historical: Landmark,
+  Family: Users,
+};

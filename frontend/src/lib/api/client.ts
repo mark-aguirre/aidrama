@@ -51,12 +51,12 @@ import {
  *
  * LIVE (real Spring Boot calls, API-CONTRACT.md): auth, creator videos,
  * uploads, processing status, publish, home feed, public video lists, video by
- * slug, related videos, series list and detail, view events, and likes.
+ * slug, related videos, series list and detail, view events, likes, and search.
  *
- * STILL MOCK (outside the signup -> upload -> process -> watch slice): search,
- * channel, watchlist, notifications, creator dashboard stats, analytics series,
- * creator comments, and `listMyContent` (kept for the Studio overview and
- * analytics pages; the live My Content page uses `listCreatorVideos`).
+ * STILL MOCK (outside the signup -> upload -> process -> watch slice): channel,
+ * watchlist, notifications, creator dashboard stats, analytics series, creator
+ * comments, and `listMyContent` (kept for the Studio overview and analytics
+ * pages; the live My Content page uses `listCreatorVideos`).
  *
  * Transport (base URL, auth header, 401 -> refresh -> retry, error envelope)
  * lives in ./http.ts; this file only maps endpoints to typed functions.
@@ -102,6 +102,9 @@ export interface CreatorVideoQuery {
 
 /** Number of related titles shown beside the player. */
 const RELATED_COUNT = 4;
+
+/** Search shows a single page of matches; 50 is the API's max page size. */
+const SEARCH_RESULT_LIMIT = 50;
 
 /** Simulate network latency for the methods that are still mocked. */
 function delay<T>(value: T, ms = 400): Promise<T> {
@@ -282,10 +285,13 @@ export const api = {
     return data.filter((v) => v.id !== excludeId).slice(0, RELATED_COUNT);
   },
 
-  /** All drama series. GET /series returns a pagination envelope; this unwraps `data`. */
-  async listSeries(): Promise<Series[]> {
+  /**
+   * Drama series, newest first, optionally narrowed to one genre. GET /series
+   * returns a pagination envelope; this unwraps `data`.
+   */
+  async listSeries(query: { genre?: string } = {}): Promise<Series[]> {
     const page = await requestJson(
-      { path: "/series" },
+      { path: "/series", query: { genre: query.genre } },
       asContract<Paginated<Series>>,
     );
     return page.data;
@@ -476,17 +482,25 @@ export const api = {
 
   /* ------------------------------- Mocks --------------------------------- */
 
-  /** Global search across titles, creators, genres (spec 3.14). MOCK. */
-  async search(q: string): Promise<Video[]> {
-    const needle = q.trim().toLowerCase();
-    if (!needle) return delay([]);
-    const results = publishedMocks().filter((v) =>
-      [v.title, v.description, v.genre, v.creator.displayName]
-        .join(" ")
-        .toLowerCase()
-        .includes(needle),
+  /**
+   * Global search across titles, descriptions, genres, and creators (spec 3.14).
+   * GET /search returns a pagination envelope; this unwraps the first page's
+   * `data`. A blank query matches nothing, so no request is made. In the browser
+   * a valid token is sent so `isLiked` is filled for a signed-in viewer.
+   */
+  async search(q: string, signal?: AbortSignal): Promise<Video[]> {
+    const needle = q.trim();
+    if (!needle) return [];
+    const { data } = await requestJson(
+      {
+        path: "/search",
+        query: { q: needle, pageSize: SEARCH_RESULT_LIMIT },
+        auth: "optional",
+        signal,
+      },
+      parsePage,
     );
-    return delay(results);
+    return data;
   },
 
   /** A creator channel: profile + their published videos (spec 3.2, 3.18). MOCK. */

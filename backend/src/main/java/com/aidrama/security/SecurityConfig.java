@@ -97,7 +97,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.DELETE, B + "/videos/*/like").authenticated()
                         // Public discovery. The video status endpoint (/videos/*/processing-status) is not listed, so it requires login.
                         .requestMatchers(HttpMethod.GET,
-                                B + "/home", B + "/videos", B + "/videos/*", B + "/series", B + "/series/*").permitAll()
+                                B + "/home", B + "/videos", B + "/videos/*", B + "/search",
+                                B + "/series", B + "/series/*").permitAll()
                         // Creator capabilities.
                         .requestMatchers(B + "/creator/**", B + "/uploads/**").hasRole("CREATOR")
                         .anyRequest().authenticated());

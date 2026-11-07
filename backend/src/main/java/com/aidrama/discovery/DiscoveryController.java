@@ -52,6 +52,15 @@ public class DiscoveryController {
         return discovery.listVideos(type, genre, parseSort(sort), PageParams.of(page, pageSize), viewer(jwt));
     }
 
+    @GetMapping("/search")
+    public Paginated<VideoResponse> search(
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer pageSize,
+            @AuthenticationPrincipal Jwt jwt) {
+        return discovery.search(q, PageParams.of(page, pageSize), viewer(jwt));
+    }
+
     @GetMapping("/videos/{slug}")
     public VideoResponse video(@PathVariable String slug, @AuthenticationPrincipal Jwt jwt) {
         return discovery.getBySlug(slug, viewer(jwt));

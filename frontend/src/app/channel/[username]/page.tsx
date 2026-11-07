@@ -1,7 +1,6 @@
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { PageShell } from "@/components/layout/page-shell";
-import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api/client";
 import {
   VideoGrid,
@@ -49,7 +48,6 @@ async function Channel({
             <span>{formatViews(totalViews)} total views</span>
           </div>
         </div>
-        <Button>Follow</Button>
       </header>
 
       <section>

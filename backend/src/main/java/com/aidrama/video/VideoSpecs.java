@@ -1,6 +1,7 @@
 package com.aidrama.video;
 
 import com.aidrama.series.Series;
+import com.aidrama.user.UserProfile;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.CriteriaQuery;
 import jakarta.persistence.criteria.Predicate;
@@ -74,6 +75,28 @@ public final class VideoSpecs {
     public static Specification<Video> titleContains(String text) {
         String pattern = "%" + escapeLikeWildcards(text.toLowerCase(Locale.ROOT)) + "%";
         return (root, query, cb) -> cb.like(cb.lower(root.get("title")), pattern, LIKE_ESCAPE);
+    }
+
+    /**
+     * Case-insensitive substring match for global catalogue search. A video matches when the text
+     * appears in its title, description or genre, or in the display name of its creator. As with
+     * {@link #titleContains}, LIKE wildcards in the text are escaped so they match literally.
+     */
+    public static Specification<Video> matchesSearch(String text) {
+        String pattern = "%" + escapeLikeWildcards(text.toLowerCase(Locale.ROOT)) + "%";
+        return (root, query, cb) -> {
+            Subquery<Integer> creator = query.subquery(Integer.class);
+            Root<UserProfile> profile = creator.from(UserProfile.class);
+            creator.select(cb.literal(1))
+                    .where(
+                            cb.equal(profile.get("userId"), root.get("creatorId")),
+                            cb.like(cb.lower(profile.get("displayName")), pattern, LIKE_ESCAPE));
+            return cb.or(
+                    cb.like(cb.lower(root.get("title")), pattern, LIKE_ESCAPE),
+                    cb.like(cb.lower(root.get("description")), pattern, LIKE_ESCAPE),
+                    cb.like(cb.lower(root.get("genre")), pattern, LIKE_ESCAPE),
+                    cb.exists(creator));
+        };
     }
 
     private static String escapeLikeWildcards(String text) {

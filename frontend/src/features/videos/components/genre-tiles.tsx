@@ -1,35 +1,26 @@
 import Link from "next/link";
-import {
-  Clapperboard,
-  Drama,
-  Feather,
-  Ghost,
-  Heart,
-  Landmark,
-  LayoutGrid,
-  Orbit,
-  Puzzle,
-  Sparkles,
-  Swords,
-  Theater,
-  type LucideIcon,
-} from "lucide-react";
+import { LayoutGrid, type LucideIcon } from "lucide-react";
 import { ScrollRail } from "@/components/shared/scroll-rail";
 import { cn } from "@/lib/utils";
+import { GENRE_ICONS } from "../genre-icons";
+
+const tileGenres: { genre: string; label: string }[] = [
+  { genre: "Romance", label: "Romance" },
+  { genre: "Action", label: "Action" },
+  { genre: "Fantasy", label: "Fantasy" },
+  { genre: "Science Fiction", label: "Sci-Fi" },
+  { genre: "Thriller", label: "Thriller" },
+  { genre: "Comedy", label: "Comedy" },
+  { genre: "Historical", label: "Historical" },
+  { genre: "Drama", label: "Drama" },
+  { genre: "Horror", label: "Horror" },
+  { genre: "Mystery", label: "Mystery" },
+  { genre: "Animation", label: "Animation" },
+];
 
 const tiles: { genre: string | null; label: string; icon: LucideIcon }[] = [
   { genre: null, label: "All", icon: LayoutGrid },
-  { genre: "Romance", label: "Romance", icon: Heart },
-  { genre: "Action", label: "Action", icon: Swords },
-  { genre: "Fantasy", label: "Fantasy", icon: Feather },
-  { genre: "Science Fiction", label: "Sci-Fi", icon: Orbit },
-  { genre: "Thriller", label: "Thriller", icon: Drama },
-  { genre: "Comedy", label: "Comedy", icon: Theater },
-  { genre: "Historical", label: "Historical", icon: Landmark },
-  { genre: "Drama", label: "Drama", icon: Clapperboard },
-  { genre: "Horror", label: "Horror", icon: Ghost },
-  { genre: "Mystery", label: "Mystery", icon: Puzzle },
-  { genre: "Animation", label: "Animation", icon: Sparkles },
+  ...tileGenres.map((t) => ({ ...t, icon: GENRE_ICONS[t.genre] })),
 ];
 
 /** Icon tiles that jump into Browse filtered by genre (spec 3.15). */

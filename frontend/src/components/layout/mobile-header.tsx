@@ -1,14 +1,12 @@
 "use client";
 
 import * as React from "react";
-import { usePathname, useRouter } from "next/navigation";
-import { ChevronLeft } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Logo } from "./logo";
 import { MobileNavSheet } from "./mobile-nav-sheet";
 
-/** Tab roots show the brand header; every other path shows back + title. */
+/** Tab roots show only the brand; deeper pages add the section title. */
 const TAB_ROOTS: ReadonlySet<string> = new Set([
   "/",
   "/explore",
@@ -36,11 +34,6 @@ const TITLES: Readonly<Record<string, string>> = {
 /** Scroll distance before the header may hide, and the movement needed to react. */
 const HIDE_AFTER_PX = 64;
 const SCROLL_DELTA_PX = 6;
-
-/** Where Back goes when there is no history to return to (deep link). */
-function backFallback(pathname: string): string {
-  return pathname.startsWith("/studio") ? "/studio" : "/";
-}
 
 /**
  * Hides the header while scrolling down and shows it on scroll up. Does
@@ -84,25 +77,15 @@ function useScrollHidden(): boolean {
 }
 
 /**
- * Compact top bar for phones (below `lg`). Tab roots show the logo; deeper
- * pages show a Back button and the section title. The account control is on
- * the right in both.
+ * Compact top bar for phones (below `lg`). The brand logo and app name always
+ * show; deeper pages add the section title. The account control is on the right.
  */
 export function MobileHeader() {
   const pathname = usePathname();
-  const router = useRouter();
   const hidden = useScrollHidden();
 
   const isRoot = TAB_ROOTS.has(pathname);
   const title = TITLES[pathname];
-
-  function goBack() {
-    if (window.history.length > 1) {
-      router.back();
-    } else {
-      router.push(backFallback(pathname));
-    }
-  }
 
   return (
     <header
@@ -112,25 +95,11 @@ export function MobileHeader() {
       )}
     >
       <div className="flex h-14 items-center gap-1 px-4">
-        {isRoot ? (
-          <Logo />
-        ) : (
-          <>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="-ml-2 size-11"
-              aria-label="Go back"
-              onClick={goBack}
-            >
-              <ChevronLeft className="size-6" aria-hidden="true" />
-            </Button>
-            {title && (
-              <span className="min-w-0 truncate text-base font-semibold text-foreground">
-                {title}
-              </span>
-            )}
-          </>
+        <Logo className="shrink-0" />
+        {!isRoot && title && (
+          <span className="min-w-0 truncate pl-1 text-base font-semibold text-foreground">
+            {title}
+          </span>
         )}
         <div className="ml-auto -mr-2 shrink-0">
           <MobileNavSheet />

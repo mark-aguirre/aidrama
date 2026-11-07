@@ -2,6 +2,8 @@ package com.aidrama.discovery;
 
 import com.aidrama.common.api.PageParams;
 import com.aidrama.common.api.Paginated;
+import com.aidrama.common.exception.BadRequestException;
+import com.aidrama.common.exception.FieldIssue;
 import com.aidrama.common.exception.NotFoundException;
 import com.aidrama.discovery.DiscoveryDtos.FeaturedTitle;
 import com.aidrama.discovery.DiscoveryDtos.HomeFeed;
@@ -55,6 +57,9 @@ public class DiscoveryService {
     private static final int HOME_RAIL_SIZE = 8;
     private static final int MAX_EPISODES_PER_SERIES = 500;
     private static final int TAGLINE_MAX = 140;
+
+    /** Longest accepted search term; a longer one is a client bug rather than a search. */
+    private static final int MAX_SEARCH_LENGTH = 200;
 
     private final VideoRepository videos;
     private final SeriesRepository seriesRepo;
@@ -151,6 +156,23 @@ public class DiscoveryService {
     }
 
     /**
+     * Global catalogue search (spec 3.14). Matches the term, case-insensitively, against a video's
+     * title, description and genre, and against its creator's display name. Only discoverable videos
+     * are returned (published, public, not deleted, and their parent series likewise), ordered by
+     * popularity. An absent or blank term matches nothing, so the result is an empty page.
+     */
+    public Paginated<VideoResponse> search(String term, PageParams params, AuthenticatedUser viewer) {
+        String text = normalizeSearch(term);
+        if (text == null) {
+            return new Paginated<>(List.of(), new Paginated.Pagination(params.page(), params.pageSize(), 0, 1, false));
+        }
+        Specification<Video> spec = VideoSpecs.discoverable().and(VideoSpecs.matchesSearch(text));
+        Page<Video> page = videos.findAll(spec, params.toPageRequest(VideoSort.POPULAR.sort()));
+        UUID viewerId = viewerId(viewer);
+        return Paginated.of(page, list -> assembler.assemble(list, viewerId));
+    }
+
+    /**
      * Watch lookup. Anyone may open a PUBLISHED video that is PUBLIC or UNLISTED (and whose parent
      * series allows it). Otherwise only the owner may, so private and draft videos stay hidden. A
      * hidden video is reported as 404.
@@ -202,6 +224,28 @@ public class DiscoveryService {
 
     private static UUID viewerId(AuthenticatedUser viewer) {
         return viewer == null ? null : viewer.id();
+    }
+
+    /**
+     * Trims the raw term and treats blank as absent, so {@code ?q=} matches nothing instead of
+     * erroring. A term longer than any title or name could be is a client bug rather than a search,
+     * so it is rejected with 400 rather than silently returning an empty page.
+     */
+    private static String normalizeSearch(String raw) {
+        if (raw == null) {
+            return null;
+        }
+        String trimmed = raw.trim();
+        if (trimmed.isEmpty()) {
+            return null;
+        }
+        if (trimmed.length() > MAX_SEARCH_LENGTH) {
+            throw new BadRequestException(
+                    "VALIDATION_ERROR",
+                    "Request validation failed.",
+                    List.of(new FieldIssue("q", "must be at most " + MAX_SEARCH_LENGTH + " characters")));
+        }
+        return trimmed;
     }
 
     /** @param episodeCounts overrides the public episode count (used by the detail page); null means query it. */

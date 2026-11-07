@@ -1,0 +1,16 @@
+target
+.git
+.git-local-backup
+*.log
+Dockerfile
+.dockerignore
+deploy-to-docker.sh
+.env
+.env.*
+*.tar
+README.md
+docs
+scripts
+.idea
+*.iml
+.vscode

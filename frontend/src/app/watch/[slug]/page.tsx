@@ -54,7 +54,7 @@ async function WatchContent({
 
 function WatchSkeleton() {
   return (
-    <div className="mx-auto w-full max-w-7xl">
+    <div className="mx-auto w-full max-w-[1760px]">
       <div className="aspect-video w-full animate-pulse rounded-lg bg-muted lg:max-w-[calc(100%-352px)]" />
       <div className="mt-4 h-6 w-1/2 animate-pulse rounded bg-muted" />
     </div>

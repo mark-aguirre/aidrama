@@ -10,7 +10,7 @@ import { NavLinks } from "./nav-links";
 export function Navbar() {
   return (
     <header className="sticky top-0 z-40 border-b border-white/5 bg-background/60 backdrop-blur-xl">
-      <div className="mx-auto flex h-16 max-w-[1400px] items-center gap-8 px-4 sm:px-8">
+      <div className="mx-auto flex h-16 max-w-[1760px] items-center gap-8 px-4 sm:px-8">
         <Logo />
 
         {/* usePathname needs a Suspense boundary under cacheComponents. */}

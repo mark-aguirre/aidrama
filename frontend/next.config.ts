@@ -27,14 +27,20 @@ const mediaPatterns = (process.env.MEDIA_IMAGE_HOSTS ?? "")
 
 const nextConfig: NextConfig = {
   /* config options here */
+  // Emit .next/standalone with a minimal server.js so the Docker image can run
+  // without installing node_modules. See deploy-to-docker.sh / Dockerfile.
+  output: "standalone",
   cacheComponents: true,
   partialPrefetching: true,
   images: {
-    // Dev only: the image optimizer blocks fetching from private IPs (SSRF
-    // guard). Self-hosted storage on the LAN (e.g. SeaweedFS at 192.168.x.x)
-    // needs this. In production, serve media over a public https CDN host
-    // instead of a private IP, and leave this false.
-    dangerouslyAllowLocalIP: process.env.NODE_ENV !== "production",
+    // The image optimizer blocks fetching from private IPs (SSRF guard).
+    // Self-hosted storage on the LAN (e.g. SeaweedFS at 192.168.x.x) needs this
+    // lifted. It is on automatically outside production; a production LAN
+    // deployment (no public CDN) opts in with ALLOW_LOCAL_IP_IMAGES=true.
+    // When media is served over a public https CDN, leave this off.
+    dangerouslyAllowLocalIP:
+      process.env.NODE_ENV !== "production" ||
+      process.env.ALLOW_LOCAL_IP_IMAGES === "true",
     remotePatterns: [
       // Mock thumbnail/avatar hosts still used by the mocked screens.
       { protocol: "https", hostname: "picsum.photos" },

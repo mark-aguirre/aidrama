@@ -1,0 +1,14 @@
+node_modules
+.next
+.git
+.git-local-backup
+npm-debug.log*
+Dockerfile
+.dockerignore
+deploy-to-docker.sh
+.env
+.env.*
+*.tar
+README.md
+AGENTS.md
+.vscode

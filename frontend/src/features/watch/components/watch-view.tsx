@@ -1,5 +1,4 @@
-import Link from "next/link";
-import { ListPlus, Share2 } from "lucide-react";
+import { ListPlus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ProcessingBadge } from "@/features/videos/components/status-badge";
@@ -8,6 +7,7 @@ import { formatDate, formatViews } from "@/lib/utils";
 import type { Video } from "@/types/domain";
 import { getWatchState } from "../watch-state";
 import { LikeButton } from "./like-button";
+import { ShareButton } from "./share-button";
 import { VideoPlayer } from "./video-player";
 import { WatchTrailerButton } from "./watch-trailer-button";
 import { ProcessingWell, UnavailableWell } from "./watch-wells";
@@ -17,7 +17,7 @@ import { ProcessingWell, UnavailableWell } from "./watch-wells";
  * are processing or failed keep the page chrome and swap only the player well
  * (design 3.2). Used by the server-rendered page and by the owner's
  * client-fetched view, so it has no hooks and no server-only imports. The
- * interactive Like button is its own client component.
+ * interactive Like and Share buttons are their own client components.
  */
 export function WatchView({
   video,
@@ -33,7 +33,7 @@ export function WatchView({
   const state = getWatchState(video);
 
   return (
-    <div className="mx-auto grid w-full max-w-[1400px] grid-cols-1 gap-8 lg:grid-cols-[1fr_340px]">
+    <div className="mx-auto grid w-full max-w-[1760px] grid-cols-1 gap-8 lg:grid-cols-[1fr_340px]">
       <div className="min-w-0">
         {state === "playable" && (
           <VideoPlayer
@@ -100,15 +100,11 @@ export function WatchView({
                 <ListPlus aria-hidden="true" />
                 Watchlist
               </Button>
-              <Button
-                variant="secondary"
-                size="sm"
+              <ShareButton
+                video={video}
                 disabled={state === "processing"}
-                aria-describedby={state === "processing" ? "watch-actions-hint" : undefined}
-              >
-                <Share2 aria-hidden="true" />
-                Share
-              </Button>
+                describedBy={state === "processing" ? "watch-actions-hint" : undefined}
+              />
             </div>
             {state === "processing" && (
               <p id="watch-actions-hint" className="mt-2 text-xs text-muted-foreground">
@@ -117,24 +113,6 @@ export function WatchView({
             )}
           </div>
         )}
-
-        <div className="mt-6 flex items-center gap-4 rounded-media border border-border/70 bg-surface p-4">
-          <div className="flex size-11 shrink-0 items-center justify-center rounded-full bg-accent font-display text-lg text-foreground">
-            {video.creator.displayName.charAt(0)}
-          </div>
-          <div className="min-w-0 flex-1">
-            <Link
-              href={`/channel/${video.creator.username}`}
-              className="font-medium hover:text-primary"
-            >
-              {video.creator.displayName}
-            </Link>
-            <p className="text-sm text-muted-foreground tabular-nums">
-              {formatViews(video.creator.followerCount)} followers
-            </p>
-          </div>
-          <Button size="sm">Follow</Button>
-        </div>
 
         {video.description && (
           <p className="mt-5 max-w-prose whitespace-pre-line text-sm leading-relaxed text-muted-foreground">

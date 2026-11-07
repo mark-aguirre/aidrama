@@ -19,7 +19,7 @@ OpenAPI 3 is served at `GET /v3/api-docs` (enabled by default, disable with `AID
 | Do not refresh on | `401 INVALID_CREDENTIALS` (wrong login) |
 | Logout | `POST /auth/logout` returns 204 and does nothing on the server. Tokens are stateless, so the client must discard both. A stolen refresh token stays valid until it expires (see Known limitations) |
 | Roles | `USER`, `CREATOR` (both are granted at registration). `/creator/*` and `/uploads/*` need `CREATOR`. Roles come from the token only, never from the request |
-| Public endpoints | `/home`, `GET /videos`, `GET /videos/{slug}`, `GET /series`, `GET /series/{slug}`, register, login, refresh, logout, verify-email |
+| Public endpoints | `/home`, `GET /videos`, `GET /search`, `GET /videos/{slug}`, `GET /series`, `GET /series/{slug}`, register, login, refresh, logout, verify-email |
 | Token storage advice | Keep the refresh token out of `localStorage` (XSS). Use memory, or have a Next.js route handler hold it in an `HttpOnly` cookie and call this API server-side |
 | Sending a token to public endpoints | Optional. A valid token on `GET /videos/{slug}` lets the owner open their own private or draft video. An invalid or expired token on a public endpoint gets `401`, so do not send a token you know is expired |
 | CORS | Allowed origins come from `AIDRAMA_CORS_ALLOWED_ORIGINS` (dev default `http://localhost:3000`). Allowed headers: `Authorization`, `Content-Type`, `Idempotency-Key`, `X-Request-ID`. Exposed header: `X-Request-ID` |
@@ -247,6 +247,7 @@ must also be `PUBLISHED`, `PUBLIC` and not deleted.
 |---|---|---|---|
 | `GET /home` | none | `200 HomeFeed` | none |
 | `GET /videos` | `type` (VideoType), `genre`, `sort` (`popular` default, `recent`, `liked`), `page`, `pageSize` | `200 Paginated<Video>` | `400` for bad `type`, `sort`, `page`, `pageSize`. An unknown `genre` gives an empty list |
+| `GET /search` | `q` (search term), `page`, `pageSize` | `200 Paginated<Video>`, most viewed first | `400` for bad `page`, `pageSize`, or a `q` over 200 chars |
 | `GET /videos/{slug}` | none | `200 Video` | `404` |
 | `GET /series` | `genre`, `page`, `pageSize` | `200 Paginated<Series>`, newest first | `400` |
 | `GET /series/{slug}` | none | `200 { series: Series, episodes: Video[] }`, episodes ordered by season then episode number, max 500 | `404` |
@@ -254,6 +255,11 @@ must also be `PUBLISHED`, `PUBLIC` and not deleted.
 `GET /videos/{slug}`: anyone can open a `PUBLISHED` video that is `PUBLIC` or `UNLISTED` (share links). If it belongs to a series,
 that series must be `PUBLISHED` and not `PRIVATE`. A `PRIVATE`, draft, unpublished or deleted video returns `404` to everyone except
 its owner (send the bearer token). Unlisted videos are never in lists.
+
+`GET /search`: `q` is matched as a case-insensitive substring against a video's `title`, `description` and `genre`, and against its
+creator's display name; a video matches if any of them contain `q`. Only discoverable videos are returned (the same visibility rule as
+`GET /videos`), most viewed first. The term is matched literally, so LIKE wildcards (`%`, `_`) match themselves. A trimmed-blank or
+absent `q` matches nothing and returns an empty page (`data: []`). A token is optional and, when valid, fills `isLiked` on the results.
 
 `HomeFeed` = `{ featured: FeaturedTitle | null, stats: PlatformStat[], trending: Video[], originals: Video[] }`:
 
@@ -289,7 +295,7 @@ from `GET /videos/{slug}`.
 
 ### Not part of this slice (do not call)
 
-Global catalogue search, `/genres`, `/videos/trending|recent|popular|recommended`, unpublish, series and season management, creator dashboard
+`/genres`, `/videos/trending|recent|popular|recommended`, unpublish, series and season management, creator dashboard
 and analytics, likes, comments, follows, history, watchlist, notifications, admin, forgot/reset password. These stay on mock data.
 `likeCount` (stays 0) is not implemented either.
 
