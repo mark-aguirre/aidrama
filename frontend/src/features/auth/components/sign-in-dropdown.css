@@ -1,0 +1,22 @@
+/*
+ * Phones get the same slide-up motion as the bottom Sheet (the keyframes live
+ * in components/ui/sheet.css). From the `sm` breakpoint up the panel is a
+ * dropdown card under the navbar and appears without animation. Radix keeps
+ * the content mounted until an exit animation ends, so this is an animation,
+ * not a transition. Reduced motion removes it.
+ */
+@media (max-width: 639.98px) {
+  .signin-panel[data-state="open"] {
+    animation: sheet-slide-up 250ms cubic-bezier(0.32, 0.72, 0, 1);
+  }
+
+  .signin-panel[data-state="closed"] {
+    animation: sheet-slide-down 200ms ease-in forwards;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .signin-panel[data-state] {
+    animation: none;
+  }
+}

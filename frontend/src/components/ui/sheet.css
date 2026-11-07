@@ -1,0 +1,37 @@
+/*
+ * Slide animation for the bottom Sheet. Radix keeps the content mounted until
+ * its exit animation ends, so the slide is a CSS animation (not a transition).
+ * With reduced motion the animation is removed and the sheet appears and
+ * disappears instantly.
+ */
+@keyframes sheet-slide-up {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes sheet-slide-down {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(100%);
+  }
+}
+
+.sheet-content[data-state="open"] {
+  animation: sheet-slide-up 250ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.sheet-content[data-state="closed"] {
+  animation: sheet-slide-down 200ms ease-in forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sheet-content[data-state] {
+    animation: none;
+  }
+}

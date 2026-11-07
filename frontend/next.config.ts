@@ -1,0 +1,55 @@
+import type { NextConfig } from "next";
+
+/**
+ * Hosts that serve API-provided images (thumbnails, avatars, posters), as a
+ * comma-separated list. Server-side build setting, not a secret and not
+ * exposed to the browser. The API contract does not name the media host, so
+ * it is configured per environment.
+ *
+ * Each entry is a hostname, optionally with a scheme and/or port, so
+ * non-TLS self-hosted storage (e.g. SeaweedFS on a LAN) works:
+ *   MEDIA_IMAGE_HOSTS=http://192.168.100.50:8333,cdn.example.com
+ * A bare hostname defaults to https on the default port.
+ */
+const mediaPatterns = (process.env.MEDIA_IMAGE_HOSTS ?? "")
+  .split(",")
+  .map((entry) => entry.trim())
+  .filter(Boolean)
+  .map((entry) => {
+    const withScheme = /^https?:\/\//.test(entry) ? entry : `https://${entry}`;
+    const url = new URL(withScheme);
+    return {
+      protocol: url.protocol.replace(":", "") as "http" | "https",
+      hostname: url.hostname,
+      ...(url.port ? { port: url.port } : {}),
+    };
+  });
+
+const nextConfig: NextConfig = {
+  /* config options here */
+  cacheComponents: true,
+  partialPrefetching: true,
+  images: {
+    // Dev only: the image optimizer blocks fetching from private IPs (SSRF
+    // guard). Self-hosted storage on the LAN (e.g. SeaweedFS at 192.168.x.x)
+    // needs this. In production, serve media over a public https CDN host
+    // instead of a private IP, and leave this false.
+    dangerouslyAllowLocalIP: process.env.NODE_ENV !== "production",
+    remotePatterns: [
+      // Mock thumbnail/avatar hosts still used by the mocked screens.
+      { protocol: "https", hostname: "picsum.photos" },
+      { protocol: "https", hostname: "fastly.picsum.photos" },
+      ...mediaPatterns,
+    ],
+  },
+  turbopack: {
+    rules: {
+      "*.css": {
+        loaders: ["@tailwindcss/turbopack"],
+        as: "*.css",
+      },
+    },
+  },
+};
+
+export default nextConfig;

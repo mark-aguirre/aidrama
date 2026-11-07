@@ -1,0 +1,15 @@
+databaseChangeLog:
+  # Order matters. Each file holds exactly one changeset with an explicit rollback.
+  # Never edit a file after it has been applied anywhere. Add a new corrective file.
+  - include: { file: changes/0001-helpers.sql,            relativeToChangelogFile: true }
+  - include: { file: changes/0002-users.sql,              relativeToChangelogFile: true }
+  - include: { file: changes/0003-series-seasons.sql,     relativeToChangelogFile: true }
+  - include: { file: changes/0004-videos.sql,             relativeToChangelogFile: true }
+  - include: { file: changes/0005-video-assets.sql,       relativeToChangelogFile: true }
+  - include: { file: changes/0006-upload-sessions.sql,    relativeToChangelogFile: true }
+  - include: { file: changes/0007-processing-jobs.sql,    relativeToChangelogFile: true }
+  - include: { file: changes/0008-video-view-events.sql,  relativeToChangelogFile: true }
+  - include: { file: changes/0009-soft-delete-guards.sql, relativeToChangelogFile: true }
+  - include: { file: changes/0010-upload-session-asset-kind.sql, relativeToChangelogFile: true }
+  - include: { file: changes/0011-trailer-link.sql,       relativeToChangelogFile: true }
+  - include: { file: changes/0012-video-likes.sql,        relativeToChangelogFile: true }

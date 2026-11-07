@@ -1,0 +1,115 @@
+spring:
+  application:
+    name: aidrama-backend
+  datasource:
+    # Connection URL and username are configuration. The password is a secret and is read from
+    # the SPRING_DATASOURCE_PASSWORD environment variable. Startup fails if it is not set.
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://192.168.100.46:5432/aidrama?options=-c%20timezone=UTC}
+    username: ${SPRING_DATASOURCE_USERNAME:postgres}
+    password: ${SPRING_DATASOURCE_PASSWORD}
+    hikari:
+      maximum-pool-size: 10
+      connection-timeout: 5000
+  jpa:
+    open-in-view: false
+    hibernate:
+      # Schema is owned by Liquibase (db/changelog). Hibernate only checks that entities match it.
+      ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+  # Migrations are a separate deploy step (see backend/README.md). The app never runs them.
+  liquibase:
+    enabled: false
+  jackson:
+    deserialization:
+      fail-on-unknown-properties: false
+
+server:
+  port: ${PORT:8080}
+  error:
+    include-message: never
+    include-stacktrace: never
+    include-binding-errors: never
+  shutdown: graceful
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
+springdoc:
+  api-docs:
+    enabled: ${AIDRAMA_API_DOCS_ENABLED:true}
+  swagger-ui:
+    enabled: false
+
+logging:
+  pattern:
+    # requestId is placed in the MDC by RequestIdFilter.
+    level: "%5p [%X{requestId:-}]"
+
+aidrama:
+  auth:
+    jwt-secret: ${AIDRAMA_JWT_SECRET}
+    issuer: aidrama
+    audience: aidrama-api
+    access-token-ttl: 15m
+    refresh-token-ttl: 14d
+    max-session-age: 30d
+    email-verification-ttl: 24h
+  storage:
+    bucket: ${AIDRAMA_STORAGE_BUCKET}
+    region: ${AIDRAMA_STORAGE_REGION:us-east-1}
+    endpoint: ${AIDRAMA_STORAGE_ENDPOINT:}
+    path-style: ${AIDRAMA_STORAGE_PATH_STYLE:false}
+    access-key-id: ${AIDRAMA_STORAGE_ACCESS_KEY_ID:}
+    secret-access-key: ${AIDRAMA_STORAGE_SECRET_ACCESS_KEY:}
+    public-base-url: ${AIDRAMA_STORAGE_PUBLIC_BASE_URL}
+    upload-url-ttl: 60m
+    max-upload-bytes: 2147483648
+  cors:
+    allowed-origins: ${AIDRAMA_CORS_ALLOWED_ORIGINS:http://localhost:3000}
+  web:
+    base-url: ${AIDRAMA_WEB_BASE_URL:http://localhost:3000}
+  mail:
+    log-links: ${AIDRAMA_MAIL_LOG_LINKS:false}
+  catalog:
+    # Same list as GENRES in frontend/src/lib/api/client.ts (spec 3.15).
+    genres:
+      - Action
+      - Adventure
+      - Animation
+      - Comedy
+      - Crime
+      - Documentary
+      - Drama
+      - Fantasy
+      - Horror
+      - Mystery
+      - Romance
+      - Science Fiction
+      - Thriller
+      - Historical
+      - Family
+  views:
+    # Keys the hash behind video_view_events.viewer_key. Server-side only. The default is a LOCAL-DEV placeholder,
+    # not a secret: set AIDRAMA_VIEWS_SALT to a random value (openssl rand -base64 32) in every shared environment.
+    salt: ${AIDRAMA_VIEWS_SALT:local-dev-views-salt-change-me}
+    # Watch time a VIEW_QUALIFIED event needs before it increments videos.view_count.
+    qualified-seconds: ${AIDRAMA_VIEWS_QUALIFIED_SECONDS:10}
+  processing:
+    dev-stub:
+      enabled: ${AIDRAMA_PROCESSING_DEV_STUB_ENABLED:false}
+      interval: PT3S
+      faststart:
+        enabled: ${AIDRAMA_PROCESSING_DEV_STUB_FASTSTART_ENABLED:false}
+        ffmpeg-path: ${AIDRAMA_PROCESSING_DEV_STUB_FASTSTART_FFMPEG_PATH:ffmpeg}
+        timeout: PT5M
+

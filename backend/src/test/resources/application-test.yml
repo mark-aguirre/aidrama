@@ -1,0 +1,24 @@
+# Test profile. Every value here is a throwaway test value, none is a real secret.
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: validate
+  liquibase:
+    enabled: true
+    # The DB engineer's changelog is the single source of truth for the schema. Tests run it as-is.
+    change-log: classpath:db/changelog/db.changelog-master.yaml
+
+aidrama:
+  auth:
+    jwt-secret: test-only-secret-test-only-secret-0123456789
+  storage:
+    bucket: test-bucket
+    region: us-east-1
+    access-key-id: test
+    secret-access-key: test
+    public-base-url: https://cdn.test.invalid/media
+    max-upload-bytes: 1000000
+  cors:
+    allowed-origins: http://localhost:3000
+  web:
+    base-url: http://localhost:3000

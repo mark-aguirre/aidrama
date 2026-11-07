@@ -1,0 +1,84 @@
+/*
+ * Glossy treatment for the sign-in panel only. Both presentations of the panel
+ * use this one class: the desktop popover (`SignInPopover`) and the shared
+ * dropdown / bottom sheet (`SignInDropdown`). The generic Popover, Dialog and
+ * Sheet do not use it, so every other consumer keeps its flat look.
+ *
+ * This file is plain, unlayered CSS, so it wins over the Tailwind utilities
+ * (`bg-popover`, `border-border`, `shadow-xl`) that are still on the elements
+ * as a safety net. Everything is built from the design tokens in globals.css.
+ *
+ * Layers, top to bottom:
+ *   1. a 1px pink-to-violet hairline along the top edge, fading out at both ends
+ *   2. a soft white specular band across the top, fading out before the
+ *      description text starts
+ *   3. the panel fill: --popover, translucent over a blurred backdrop
+ * plus a violet-tinted border, a deep two-step shadow with a faint pink glow,
+ * and a 1px inner top highlight.
+ *
+ * The gradient layers are backgrounds, not pseudo-elements, so they stay put
+ * when the panel scrolls (it scrolls on short viewports) and add no DOM.
+ *
+ * Contrast: the fill is opaque --popover by default. Only where
+ * backdrop-filter is supported does it become 86% opaque, and the backdrop is
+ * darkened with brightness(0.4) so a bright image behind the panel cannot
+ * wash out the text. Users who ask for reduced transparency get the opaque
+ * fill and no blur.
+ */
+.signin-glossy {
+  --glossy-fill: var(--popover);
+  --glossy-border: color-mix(in srgb, var(--signal) 30%, var(--border));
+  --glossy-specular: color-mix(in srgb, var(--foreground) 7%, transparent);
+  --glossy-edge-a: color-mix(in srgb, var(--primary) 75%, transparent);
+  --glossy-edge-b: color-mix(in srgb, var(--signal) 75%, transparent);
+  /* 1 casts the shadow below the panel (popover); -1 casts it upward (bottom sheet). */
+  --glossy-dir: 1;
+
+  border: 1px solid var(--glossy-border);
+  background:
+    linear-gradient(
+        90deg,
+        transparent,
+        var(--glossy-edge-a) 22%,
+        var(--glossy-edge-b) 78%,
+        transparent
+      )
+      top / 100% 1px no-repeat,
+    radial-gradient(
+        ellipse 85% 2.75rem at 30% 0%,
+        var(--glossy-specular),
+        transparent
+      )
+      top / 100% 2.75rem no-repeat,
+    var(--glossy-fill);
+  box-shadow:
+    0 calc(28px * var(--glossy-dir)) 64px -14px rgb(0 0 0 / 0.65),
+    0 calc(10px * var(--glossy-dir)) 24px -8px rgb(0 0 0 / 0.5),
+    0 0 48px -22px color-mix(in srgb, var(--primary) 45%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--foreground) 12%, transparent);
+}
+
+/* Frosted glass only where the browser can blur what is behind the panel. */
+@supports ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+  .signin-glossy {
+    --glossy-fill: color-mix(in srgb, var(--popover) 86%, transparent);
+    -webkit-backdrop-filter: blur(18px) saturate(1.5) brightness(0.4);
+    backdrop-filter: blur(18px) saturate(1.5) brightness(0.4);
+  }
+}
+
+/* The bottom sheet only has a top edge, like the Tailwind classes it replaces. */
+@media (max-width: 639.98px) {
+  .signin-glossy {
+    border-width: 1px 0 0;
+    --glossy-dir: -1;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .signin-glossy {
+    --glossy-fill: var(--popover);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}

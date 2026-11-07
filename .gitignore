@@ -1,0 +1,29 @@
+# Secrets - never commit. Module .env.example files are the templates.
+.env
+.env.*
+!.env.example
+
+# Dependencies and build output
+node_modules/
+.next/
+out/
+target/
+dist/
+build/
+
+# Preserved history of the former standalone frontend repo (see README notes)
+frontend/.git-local-backup/
+
+# Logs and caches
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+*.tsbuildinfo
+
+# Editor and OS
+.DS_Store
+Thumbs.db
+.idea/
+*.iml
