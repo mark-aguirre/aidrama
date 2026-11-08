@@ -81,6 +81,23 @@ export const GENRES = [
   "Family",
 ] as const;
 
+/**
+ * A bare gateway 502 (Cloudflare's "origin_bad_gateway") can be returned after
+ * the origin has already acted on an idempotent request, so the browser sees a
+ * failure for work that actually succeeded. These bound a short client-side
+ * retry for such requests; the retry is cheap because the operation is
+ * idempotent at the origin.
+ */
+const GATEWAY_502_RETRIES = 2;
+const GATEWAY_502_RETRY_DELAY_MS = 1500;
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/** True for a Cloudflare/gateway 502 with no application error code of its own. */
+function isGateway502(error: unknown): boolean {
+  return isApiError(error) && error.status === 502;
+}
+
 export type SortKey = "popular" | "recent" | "liked";
 
 export interface VideoQuery {
@@ -358,13 +375,38 @@ export const api = {
     );
   },
 
-  /** DELETE /creator/videos/{id}. Soft-deletes the video. 204 on success, 404 if not owned. */
+  /**
+   * DELETE /creator/videos/{id}. Soft-deletes the video. 204 on success.
+   *
+   * The call is behind Cloudflare, which can return a 502 after the origin has
+   * already soft-deleted the row (the request reaches the origin; only the
+   * response is lost). Because soft-delete is not idempotent on the origin, a
+   * retry then finds the row already gone and answers 404. Both outcomes mean
+   * the video is deleted, so a 502 is retried briefly and a follow-up 404 is
+   * treated as success. A 404 on the very first attempt (nothing was deleted)
+   * still surfaces, so deleting a video that was never there is not masked.
+   */
   async deleteVideo(videoId: string): Promise<void> {
-    await requestVoid({
+    const options: RequestOptions = {
       path: `/creator/videos/${encodeURIComponent(videoId)}`,
       method: "DELETE",
       auth: "required",
-    });
+    };
+
+    for (let attempt = 0; ; attempt++) {
+      try {
+        await requestVoid(options);
+        return;
+      } catch (error) {
+        // A 404 after a 502 retry means the earlier attempt already deleted it.
+        if (attempt > 0 && isApiError(error) && error.status === 404) return;
+        if (isGateway502(error) && attempt < GATEWAY_502_RETRIES) {
+          await sleep(GATEWAY_502_RETRY_DELAY_MS);
+          continue;
+        }
+        throw error;
+      }
+    }
   },
 
   /**
