@@ -26,21 +26,32 @@ export function FileSummary({
   onRemove?: () => void;
 }) {
   return (
-    <div className="flex items-center gap-3 rounded-media border border-border bg-surface p-4">
-      <FileVideo className="shrink-0 text-primary" aria-hidden="true" />
+    <div className="flex items-center gap-3 rounded-media border border-border/70 bg-surface-2/55 p-3.5 sm:p-4">
+      <span
+        className="flex size-10 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary"
+        aria-hidden="true"
+      >
+        <FileVideo className="size-5" />
+      </span>
       <div className="min-w-0 flex-1">
         {label && (
-          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            {label}
-          </p>
+          <p className="text-xs font-medium text-muted-foreground">{label}</p>
         )}
-        <p className="truncate text-sm font-medium" title={file.name}>
+        <p className="truncate text-sm font-medium text-foreground" title={file.name}>
           {file.name}
         </p>
-        <p className="text-xs text-muted-foreground">{formatMegabytes(file.size)}</p>
+        <p className="mt-0.5 text-xs tabular-nums text-muted-foreground">
+          {formatMegabytes(file.size)}
+        </p>
       </div>
       {onRemove && (
-        <Button type="button" variant="ghost" size="icon" aria-label={removeLabel} onClick={onRemove}>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          aria-label={removeLabel}
+          onClick={onRemove}
+        >
           <X aria-hidden="true" />
         </Button>
       )}

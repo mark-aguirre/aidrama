@@ -242,6 +242,10 @@ export function ThumbnailSearchDialog({
           </Button>
         </form>
 
+        <p role="status" aria-live="polite" className="sr-only">
+          {pickingId ? "Downloading the selected image." : ""}
+        </p>
+
         {message && (
           <p role="alert" className="text-sm text-destructive">
             {message}
@@ -275,6 +279,7 @@ export function ThumbnailSearchDialog({
                       type="button"
                       onClick={() => pick(result)}
                       disabled={pickingId !== null}
+                      aria-busy={busy || undefined}
                       title={result.title}
                       className={cn(
                         "group relative block w-full overflow-hidden rounded-media border border-border bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-popover",

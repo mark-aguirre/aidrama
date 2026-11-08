@@ -46,7 +46,7 @@ function currentStep(
 
 function StepNode({ state, number }: { state: StepState; number: number }) {
   const base =
-    "relative z-10 flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-medium sm:size-8 sm:text-sm";
+    "relative z-10 flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold sm:size-8 sm:text-sm";
 
   if (state === "complete") {
     return (
@@ -57,7 +57,12 @@ function StepNode({ state, number }: { state: StepState; number: number }) {
   }
   if (state === "error") {
     return (
-      <span className={cn(base, "border-2 border-destructive bg-card text-destructive")}>
+      <span
+        className={cn(
+          base,
+          "border-2 border-destructive bg-card text-destructive ring-4 ring-destructive/10",
+        )}
+      >
         <AlertCircle className="size-3.5 sm:size-4" aria-hidden="true" />
       </span>
     );
@@ -67,7 +72,7 @@ function StepNode({ state, number }: { state: StepState; number: number }) {
       <span
         className={cn(
           base,
-          "animate-pulse border-2 border-primary bg-card text-foreground motion-reduce:animate-none",
+          "border-2 border-primary bg-primary/10 text-primary ring-4 ring-primary/10",
         )}
       >
         {number}
@@ -83,9 +88,9 @@ function StepNode({ state, number }: { state: StepState; number: number }) {
 
 const LABEL_CLASS: Record<StepState, string> = {
   complete: "text-foreground",
-  active: "font-medium text-foreground",
+  active: "font-semibold text-foreground",
   upcoming: "text-muted-foreground",
-  error: "text-destructive",
+  error: "font-semibold text-destructive",
 };
 
 /**
@@ -110,27 +115,29 @@ export function UploadStepper({
 
   const compactIndex = Math.min(current, LAST_STEP_INDEX);
   const compactSuffix = errored
-    ? " — error"
+    ? ", error"
     : current > LAST_STEP_INDEX
-      ? " — done"
+      ? ", done"
       : "";
 
   return (
-    <nav aria-label="Upload progress">
+    <div role="group" aria-label="Upload progress">
       <ol className="flex items-start">
         {STEP_LABELS.map((label, i) => {
           const state = states[i];
           return (
             <li
               key={label}
-              aria-current={state === "active" ? "step" : undefined}
+              aria-current={
+                state === "active" || state === "error" ? "step" : undefined
+              }
               className="relative flex flex-1 flex-col items-center"
             >
               {i < LAST_STEP_INDEX && (
                 <span
                   aria-hidden="true"
                   className={cn(
-                    "absolute left-1/2 top-3 h-0.5 w-full -translate-y-1/2 sm:top-4",
+                    "absolute left-1/2 top-3.5 h-px w-full -translate-y-1/2 sm:top-4",
                     state === "complete" ? "bg-primary" : "bg-border",
                   )}
                 />
@@ -143,7 +150,7 @@ export function UploadStepper({
                 )}
               >
                 {label}
-                <span className="sr-only"> — {STATE_TEXT[state]}</span>
+                <span className="sr-only">, {STATE_TEXT[state]}</span>
               </span>
             </li>
           );
@@ -152,13 +159,13 @@ export function UploadStepper({
       <p
         aria-hidden="true"
         className={cn(
-          "mt-3 text-center text-sm sm:hidden",
+          "mt-3 text-center text-sm font-medium sm:hidden",
           errored ? "text-destructive" : "text-foreground",
         )}
       >
-        Step {compactIndex + 1} of {STEP_LABELS.length} · {STEP_LABELS[compactIndex]}
+        Step {compactIndex + 1} of {STEP_LABELS.length}: {STEP_LABELS[compactIndex]}
         {compactSuffix}
       </p>
-    </nav>
+    </div>
   );
 }

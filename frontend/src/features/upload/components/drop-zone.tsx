@@ -32,31 +32,40 @@ export function DropZone({
 
   return (
     <div
-      onDragOver={(e) => {
-        e.preventDefault();
+      onDragOver={(event) => {
+        event.preventDefault();
         setDragging(true);
       }}
       onDragLeave={() => setDragging(false)}
-      onDrop={(e) => {
-        e.preventDefault();
+      onDrop={(event) => {
+        event.preventDefault();
         setDragging(false);
-        onFile(e.dataTransfer.files[0]);
+        onFile(event.dataTransfer.files[0]);
       }}
       className={cn(
-        "flex flex-col items-center justify-center gap-3 rounded-media border-2 border-dashed border-border px-4 py-14 text-center transition-colors motion-reduce:transition-none sm:py-16",
-        invalid && "border-destructive/50",
-        dragging && "border-primary bg-accent/50",
+        "group flex flex-col items-center justify-center gap-3 rounded-media border-2 border-dashed border-border bg-surface-2/30 px-6 py-12 text-center transition-colors hover:border-primary/50 focus-within:border-primary/60 motion-reduce:transition-none sm:py-16",
+        invalid && "border-destructive/60",
+        dragging && "border-primary bg-primary/5",
         className,
       )}
     >
-      <UploadCloud
-        className={cn("size-8", dragging ? "text-primary" : "text-muted-foreground")}
+      <span
+        className={cn(
+          "flex size-12 items-center justify-center rounded-full bg-accent text-muted-foreground transition-colors motion-reduce:transition-none",
+          dragging
+            ? "bg-primary/15 text-primary"
+            : "group-hover:bg-primary/10 group-hover:text-primary",
+        )}
         aria-hidden="true"
-      />
-      <p className={cn("text-sm", dragging ? "text-primary" : "text-foreground")}>
-        {dragging ? "Drop to upload" : prompt}
-      </p>
-      <p className="text-xs text-muted-foreground">MP4, MOV, or WebM. Up to 2 GB.</p>
+      >
+        <UploadCloud className="size-6" />
+      </span>
+      <div className="flex flex-col gap-1">
+        <p className={cn("text-sm font-medium", dragging ? "text-primary" : "text-foreground")}>
+          {dragging ? "Drop to upload" : prompt}
+        </p>
+        <p className="text-xs text-muted-foreground">MP4, MOV, or WebM, up to 2 GB</p>
+      </div>
       <Button type="button" onClick={() => inputRef.current?.click()}>
         {actionLabel}
       </Button>
@@ -67,9 +76,9 @@ export function DropZone({
         className="sr-only"
         tabIndex={-1}
         aria-label={inputLabel}
-        onChange={(e) => {
-          onFile(e.target.files?.[0]);
-          e.target.value = "";
+        onChange={(event) => {
+          onFile(event.target.files?.[0]);
+          event.target.value = "";
         }}
       />
     </div>

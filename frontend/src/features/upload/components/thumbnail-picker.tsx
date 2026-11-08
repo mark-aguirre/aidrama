@@ -86,11 +86,12 @@ export function ThumbnailPicker({
   return (
     <div className="flex flex-col gap-1.5" aria-busy={preparing || undefined}>
       <Label htmlFor={id}>
-        Thumbnail <span className="text-destructive">*</span>
+        Thumbnail <span aria-hidden="true" className="text-destructive">*</span>
+        <span className="sr-only"> (required)</span>
       </Label>
 
       {preview ? (
-        <div className="relative overflow-hidden rounded-media border border-border bg-surface">
+        <div className="relative overflow-hidden rounded-media border border-border/70 bg-surface-2/50">
           <div className="relative aspect-video w-full">
             <Image
               src={preview}
@@ -156,8 +157,8 @@ export function ThumbnailPicker({
             void applyFile(e.dataTransfer.files[0] ?? null);
           }}
           className={cn(
-            "flex aspect-video w-full flex-col items-center justify-center gap-2 rounded-media border-2 border-dashed border-border text-center transition-colors",
-            dragging && "border-primary bg-accent/50",
+            "flex aspect-video w-full flex-col items-center justify-center gap-2 rounded-media border-2 border-dashed border-border bg-surface-2/30 px-4 text-center transition-colors hover:border-primary/50 focus-within:border-primary/60 motion-reduce:transition-none",
+            dragging && "border-primary bg-primary/5",
             error && "border-destructive",
           )}
         >
@@ -200,6 +201,9 @@ export function ThumbnailPicker({
         type="file"
         accept={THUMBNAIL_ACCEPT_ATTRIBUTE}
         className="sr-only"
+        required
+        aria-required="true"
+        tabIndex={-1}
         aria-describedby={error ? `${hintId} ${errorId}` : hintId}
         aria-invalid={error ? true : undefined}
         disabled={preparing}

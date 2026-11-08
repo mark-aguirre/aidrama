@@ -68,15 +68,24 @@ export function PublishForm({
     <form
       onSubmit={handleSubmit(onSubmit)}
       noValidate
-      className="flex flex-col gap-4"
+      className="flex flex-col gap-4 rounded-media border border-border/70 bg-surface-2/35 p-4 sm:p-5"
       aria-label="Publish video"
     >
+      <div>
+        <h3 className="text-sm font-semibold text-foreground">Publishing details</h3>
+        <p className="mt-1 text-xs leading-5 text-muted-foreground">
+          Genre and visibility are required.
+        </p>
+      </div>
+
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="flex flex-col gap-1.5">
           <Label htmlFor={genreId}>Genre</Label>
           <Select
             id={genreId}
             defaultValue=""
+            required
+            aria-required="true"
             aria-invalid={errors.genre ? true : undefined}
             aria-describedby={errors.genre ? `${genreId}-error` : undefined}
             {...register("genre")}
@@ -102,6 +111,8 @@ export function PublishForm({
           <Select
             id={visibilityId}
             defaultValue=""
+            required
+            aria-required="true"
             aria-invalid={errors.visibility ? true : undefined}
             aria-describedby={errors.visibility ? `${visibilityId}-error` : undefined}
             {...register("visibility")}
@@ -129,7 +140,7 @@ export function PublishForm({
         </p>
       )}
 
-      <Button type="submit" disabled={isSubmitting} className="self-start">
+      <Button type="submit" disabled={isSubmitting} className="w-full sm:w-auto sm:self-start">
         {isSubmitting && <Loader2 className="animate-spin" aria-hidden="true" />}
         Publish
       </Button>

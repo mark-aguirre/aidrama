@@ -24,7 +24,7 @@ export default function StudioLayout({
       <MobileShellHeader />
       <div className="flex flex-1">
         <StudioSidebar />
-        <main className="min-w-0 flex-1 px-4 py-8 sm:px-8">{children}</main>
+        <main className="min-w-0 flex-1 px-4 py-8 sm:px-8 lg:py-10">{children}</main>
       </div>
       <MobileShellTabBar />
     </div>

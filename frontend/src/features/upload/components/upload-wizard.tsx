@@ -100,8 +100,6 @@ function WizardBody() {
   }, [phase]);
 
   const status = phase === "idle" || phase === "selected" ? null : STATUS_BY_PHASE[phase];
-  // The published state is carried by its heading and success line, not a chip.
-  const chipStatus = phase === "published" ? null : status;
   const draftExists = state.videoId !== null;
   const typeLabel = CREATABLE_TYPES.find((t) => t.value === details?.type)?.label;
 
@@ -132,12 +130,12 @@ function WizardBody() {
   };
 
   return (
-    <Card>
-      <CardHeader className="border-b border-border/70 p-5 sm:p-6">
+    <Card className="overflow-hidden border-border/80 bg-card/95">
+      <CardHeader className="border-b border-border/70 bg-surface-2/25 p-5 sm:p-6">
         <UploadStepper phase={phase} failure={failure} />
       </CardHeader>
 
-      <CardContent className="flex flex-col gap-6 p-5 sm:p-6">
+      <CardContent className="flex flex-col gap-6 p-5 sm:gap-7 sm:p-6">
         <p role="status" aria-live="polite" className="sr-only">
           {phase === "failed"
             ? failure?.stage === "processing"
@@ -187,7 +185,9 @@ function WizardBody() {
                 draft video.
               </p>
               {trailerSection}
-              <Button onClick={() => startUpload(details)}>Start upload</Button>
+              <Button className="w-full sm:w-auto" onClick={() => startUpload(details)}>
+                Start upload
+              </Button>
             </div>
           ) : (
             <UploadDetailsForm
@@ -202,7 +202,7 @@ function WizardBody() {
         {file && phase === "pending" && (
           <>
             <StepHeading ref={headingRef}>Starting upload</StepHeading>
-            <FileSummary file={file} status={chipStatus} label={mainLabel} />
+            <FileSummary file={file} status={null} label={mainLabel} />
             <p className="text-sm text-muted-foreground">Getting things ready…</p>
           </>
         )}
@@ -210,7 +210,7 @@ function WizardBody() {
         {file && phase === "uploading" && (
           <>
             <StepHeading ref={headingRef}>Uploading</StepHeading>
-            <FileSummary file={file} status={chipStatus} label={mainLabel} />
+            <FileSummary file={file} status={null} label={mainLabel} />
             <UploadProgress
               percent={state.progress}
               label={mainLabel ? "Uploading main video" : "Uploading"}
@@ -222,18 +222,22 @@ function WizardBody() {
         {file && phase === "processing" && (
           <>
             <StepHeading ref={headingRef}>Processing</StepHeading>
-            <FileSummary file={file} status={chipStatus} label={mainLabel} />
-            <div className="flex flex-col gap-3 rounded-media border border-border bg-surface p-4">
-              <p className="flex items-center gap-2 text-sm font-medium text-foreground">
+            <FileSummary file={file} status={null} label={mainLabel} />
+            <div className="flex flex-col gap-3 rounded-media border border-border/70 bg-surface-2/45 p-4 sm:p-5">
+              <p className="flex items-center gap-2 text-sm font-semibold text-foreground">
                 <Loader2
-                  className="size-4 animate-spin motion-reduce:animate-none"
+                  className="size-4 animate-spin text-primary motion-reduce:animate-none"
                   aria-hidden="true"
                 />
-                Processing
-                {flow.statusQuery.percent > 0 && <> · {flow.statusQuery.percent}%</>}
+                Transcoding your video
+                {flow.statusQuery.percent > 0 && (
+                  <span className="tabular-nums text-muted-foreground">
+                    {flow.statusQuery.percent}%
+                  </span>
+                )}
               </p>
-              <p className="text-sm text-foreground">
-                This can take a few minutes. You can leave this page.
+              <p className="text-sm leading-6 text-muted-foreground">
+                This can take a few minutes. You can leave this page while it finishes.
               </p>
               <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
                 <span>Processing started.</span>
@@ -259,27 +263,31 @@ function WizardBody() {
         {file && phase === "ready" && (
           <>
             <StepHeading ref={headingRef}>Ready to publish</StepHeading>
-            <FileSummary file={file} status={chipStatus} label={mainLabel} />
+            <FileSummary file={file} status={null} label={mainLabel} />
           </>
         )}
 
         {file && phase === "published" && state.published && (
           <>
             <StepHeading ref={headingRef}>Published</StepHeading>
-            <FileSummary file={file} status={chipStatus} label={mainLabel} />
+            <FileSummary file={file} status={null} label={mainLabel} />
           </>
         )}
 
         {file && phase === "failed" && (
-          <FileSummary file={file} status={chipStatus} label={mainLabel} />
+          <FileSummary file={file} status={null} label={mainLabel} />
         )}
 
-        {status && phase !== "published" && (
-          <StageChecklist
-            status={status}
-            failedAt={failureReason ? failureReason.at : undefined}
-          />
-        )}
+        {status &&
+          (phase === "pending" ||
+            phase === "uploading" ||
+            phase === "processing" ||
+            phase === "failed") && (
+            <StageChecklist
+              status={status}
+              failedAt={failureReason ? failureReason.at : undefined}
+            />
+          )}
 
         {(phase === "pending" || phase === "uploading") && (
           <Button
@@ -315,7 +323,7 @@ function WizardBody() {
               idPrefix="wizard-publish"
               onPublished={flow.published}
             />
-            <Button variant="secondary" className="self-start" onClick={resetAll}>
+            <Button variant="secondary" className="w-full sm:w-auto sm:self-start" onClick={resetAll}>
               Upload another
             </Button>
           </div>
