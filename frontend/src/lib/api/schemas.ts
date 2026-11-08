@@ -89,6 +89,13 @@ export const uploadSessionSchema = z.object({
       headers: z.record(z.string(), z.string()),
     })
     .nullable(),
+  multipart: z
+    .object({
+      partSizeBytes: z.number(),
+      totalParts: z.number(),
+      parts: z.array(z.object({ partNumber: z.number(), url: z.string() })),
+    })
+    .nullable(),
   expiresAt: z.string(),
   completedAt: z.string().nullable(),
   failure: failureSchema.nullable(),

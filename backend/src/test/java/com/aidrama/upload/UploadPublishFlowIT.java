@@ -223,6 +223,70 @@ class UploadPublishFlowIT extends IntegrationTestBase {
     }
 
     @Test
+    void largeVideoUsesMultipartAndCompletesWithPartEtags() throws Exception {
+        TestUser creator = registerUser();
+        String videoId = createVideo(creator, "Large film");
+
+        // 25000 bytes with a 10000-byte part size (test profile) => 3 parts.
+        long largeSize = 25_000;
+        MvcResult init = mvc.perform(authedPost(creator, "/api/v1/uploads/initiate", """
+                        {"videoId":"%s","filename":"movie.mp4","contentType":"video/mp4","sizeBytes":%d}
+                        """.formatted(videoId, largeSize)))
+                .andExpect(status().isCreated())
+                // A multipart session exposes the chunk plan, not a single PUT target.
+                .andExpect(jsonPath("$.upload").isEmpty())
+                .andExpect(jsonPath("$.multipart.partSizeBytes").value(10000))
+                .andExpect(jsonPath("$.multipart.totalParts").value(3))
+                .andExpect(jsonPath("$.multipart.parts.length()").value(3))
+                .andExpect(jsonPath("$.multipart.parts[0].partNumber").value(1))
+                .andExpect(jsonPath("$.multipart.parts[0].url").isNotEmpty())
+                .andExpect(jsonPath("$.multipart.parts[2].partNumber").value(3))
+                .andReturn();
+        String uploadId = json(init, "$.id");
+        String key = uploadKey(uploadId);
+
+        // Confirming a multipart session with the single-PUT endpoint is rejected.
+        mvc.perform(authedPost(creator, "/api/v1/uploads/" + uploadId + "/complete", ""))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error.code").value("UPLOAD_IS_MULTIPART"));
+
+        // The browser PUTs each part; the fake storage records the assembled object on complete,
+        // so the test "uploads" by declaring the final object before confirming.
+        storage.put(key, largeSize, "video/mp4");
+        mvc.perform(authedPost(creator, "/api/v1/uploads/" + uploadId + "/complete-multipart", """
+                        {"parts":[{"partNumber":1,"eTag":"etag-1"},{"partNumber":3,"eTag":"etag-3"},{"partNumber":2,"eTag":"etag-2"}]}
+                        """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.upload.status").value("COMPLETED"))
+                .andExpect(jsonPath("$.processing.processingStatus").value("PROCESSING"))
+                .andExpect(jsonPath("$.processing.jobStatus").value("PENDING"));
+
+        // Retrying is idempotent and queues no second job.
+        mvc.perform(authedPost(creator, "/api/v1/uploads/" + uploadId + "/complete-multipart", """
+                        {"parts":[{"partNumber":1,"eTag":"etag-1"},{"partNumber":2,"eTag":"etag-2"},{"partNumber":3,"eTag":"etag-3"}]}
+                        """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.upload.status").value("COMPLETED"));
+        assertThat(jdbc.queryForObject("select count(*) from processing_jobs where video_id = ?::uuid", Integer.class, videoId)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("select count(*) from video_assets where video_id = ?::uuid and asset_type = 'ORIGINAL'", Integer.class, videoId)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("select multipart_upload_id from upload_sessions where id = ?::uuid", String.class, uploadId)).isNotNull();
+    }
+
+    @Test
+    void singlePutSessionRejectsTheMultipartCompleteEndpoint() throws Exception {
+        TestUser creator = registerUser();
+        String videoId = createVideo(creator, "Small film");
+        // SIZE (5000) is below the multipart threshold, so this is a single-PUT session.
+        String uploadId = json(initiate(creator, videoId, null), "$.id");
+
+        mvc.perform(authedPost(creator, "/api/v1/uploads/" + uploadId + "/complete-multipart", """
+                        {"parts":[{"partNumber":1,"eTag":"etag-1"}]}
+                        """))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error.code").value("UPLOAD_NOT_MULTIPART"));
+    }
+
+    @Test
     void creatorUploadsRequiredThumbnailWhichShowsUpImmediatelyWithoutProcessing() throws Exception {
         TestUser creator = registerUser();
         String videoId = createVideo(creator, "With poster");

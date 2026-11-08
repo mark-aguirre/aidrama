@@ -34,8 +34,12 @@ public class StorageConfig {
                         .apiCallTimeout(Duration.ofSeconds(10))
                         .apiCallAttemptTimeout(Duration.ofSeconds(5))
                         .build());
-        if (StringUtils.hasText(s.endpoint())) {
-            builder.endpointOverride(URI.create(s.endpoint()));
+        // The backend's own calls (HEAD, multipart) go to the internal endpoint when one is set, so
+        // signed requests reach the storage origin directly instead of a caching CDN that would break
+        // a SigV4 HEAD. Falls back to the public endpoint.
+        String serverEndpoint = StringUtils.hasText(s.internalEndpoint()) ? s.internalEndpoint() : s.endpoint();
+        if (StringUtils.hasText(serverEndpoint)) {
+            builder.endpointOverride(URI.create(serverEndpoint));
         }
         return builder.build();
     }

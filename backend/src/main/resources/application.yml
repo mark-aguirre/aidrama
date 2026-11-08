@@ -68,6 +68,7 @@ aidrama:
     bucket: ${AIDRAMA_STORAGE_BUCKET}
     region: ${AIDRAMA_STORAGE_REGION:us-east-1}
     endpoint: ${AIDRAMA_STORAGE_ENDPOINT:}
+    internal-endpoint: ${AIDRAMA_STORAGE_INTERNAL_ENDPOINT:}
     path-style: ${AIDRAMA_STORAGE_PATH_STYLE:false}
     access-key-id: ${AIDRAMA_STORAGE_ACCESS_KEY_ID:}
     secret-access-key: ${AIDRAMA_STORAGE_SECRET_ACCESS_KEY:}

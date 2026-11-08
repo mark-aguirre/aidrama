@@ -139,9 +139,32 @@ Contains the private `email`: it is only ever returned to the user themself.
   "id": "…", "videoId": "…", "status": "PENDING",
   "filename": "movie.mp4", "contentType": "video/mp4", "sizeBytes": 123456, "uploadedBytes": 0,
   "upload": { "url": "https://…signed…", "method": "PUT", "headers": { "Content-Type": "video/mp4" } },
+  "multipart": null,
   "expiresAt": "…", "completedAt": null, "failure": null, "createdAt": "…"
 }
 ```
+
+Exactly one of `upload` and `multipart` is set while a session is in flight; both are `null` once it
+is no longer usable. A small file gets a single-PUT `upload`; a large one (at or above the server's
+multipart threshold) gets a chunked `multipart` plan instead, so no single request body exceeds a
+proxy's limit (Cloudflare caps at 100 MB):
+
+```json
+"multipart": {
+  "partSizeBytes": 94371840,
+  "totalParts": 3,
+  "parts": [
+    { "partNumber": 1, "url": "https://…signed-part-1…" },
+    { "partNumber": 2, "url": "https://…signed-part-2…" },
+    { "partNumber": 3, "url": "https://…signed-part-3…" }
+  ]
+}
+```
+
+Multipart flow: slice the file into `partSizeBytes` chunks (the last part is the remainder), `PUT`
+each slice to `parts[i].url` with no extra headers, read each response's `ETag` header, then
+`POST /uploads/{id}/complete-multipart` with `{ "parts": [ { "partNumber": 1, "eTag": "…" }, … ] }`.
+The media host must expose the `ETag` response header via CORS for the browser to read it.
 
 `upload` is non-null only while the session is `PENDING`/`UPLOADING` and not expired (it is re-signed on every `GET`).
 `failure` = `{ code, message }` when `status` is `FAILED`.
@@ -219,14 +242,18 @@ The client never receives SQL or constraint names.
 
 ### Uploads (spec 5.3, 7.5), role `CREATOR`
 
-Flow: `POST /creator/videos` → `POST /uploads/initiate` → browser `PUT` to `upload.url` → `POST /uploads/{id}/complete` →
+Flow (small file): `POST /creator/videos` → `POST /uploads/initiate` → browser `PUT` to `upload.url` → `POST /uploads/{id}/complete` →
 poll `GET /videos/{id}/processing-status` until `processingStatus` is `READY` or `FAILED` → `POST /creator/videos/{id}/publish`.
+
+Flow (large file): same, but when `initiate` returns a `multipart` plan instead of `upload`, the browser PUTs each part to
+`multipart.parts[i].url`, then confirms with `POST /uploads/{id}/complete-multipart` (carrying the part ETags) instead of `complete`.
 
 | Method and path | Request | Success | Errors |
 |---|---|---|---|
 | `POST /uploads/initiate` | header `Idempotency-Key` (optional); body `{ videoId, filename, contentType, sizeBytes }` | `201 UploadSession`. `200` with the same session when the key was already used with an identical body | `400 UNSUPPORTED_VIDEO_FORMAT`, `400 VALIDATION_ERROR`, `404` (not your video), `409 UPLOAD_IN_PROGRESS` (`details[0]` = `{ field: "uploadId", issue: "<id>" }`), `409 VIDEO_ALREADY_UPLOADED`, `409 IDEMPOTENCY_KEY_REUSED`, `413 UPLOAD_TOO_LARGE`, `422 VIDEO_REMOVED` |
 | `GET /uploads/{id}` | none | `200 UploadSession` | `404` |
-| `POST /uploads/{id}/complete` | none (no body) | `200 { upload: UploadSession, processing: ProcessingStatus }`. Retrying a completed session returns the same result | `404`, `409 UPLOAD_SESSION_EXPIRED` / `UPLOAD_SESSION_NOT_ACTIVE`, `422 UPLOAD_OBJECT_MISSING` (file not in storage yet: finish the PUT and retry), `422 UPLOAD_VERIFICATION_FAILED` (size or type differs from what was declared: start a new upload), `502 STORAGE_UNAVAILABLE` (retry) |
+| `POST /uploads/{id}/complete` | none (no body) | `200 { upload: UploadSession, processing: ProcessingStatus }`. Retrying a completed session returns the same result | `404`, `409 UPLOAD_SESSION_EXPIRED` / `UPLOAD_SESSION_NOT_ACTIVE`, `409 UPLOAD_IS_MULTIPART` (use complete-multipart), `422 UPLOAD_OBJECT_MISSING` (file not in storage yet: finish the PUT and retry), `422 UPLOAD_VERIFICATION_FAILED` (size or type differs from what was declared: start a new upload), `502 STORAGE_UNAVAILABLE` (retry) |
+| `POST /uploads/{id}/complete-multipart` | body `{ parts: [ { partNumber, eTag }, … ] }` (every uploaded part) | `200 { upload: UploadSession, processing: ProcessingStatus }`. Retrying a completed session returns the same result | `404`, `400 VALIDATION_ERROR`, `409 UPLOAD_SESSION_EXPIRED` / `UPLOAD_SESSION_NOT_ACTIVE`, `409 UPLOAD_NOT_MULTIPART` (use complete), `422 UPLOAD_OBJECT_MISSING`, `422 UPLOAD_VERIFICATION_FAILED`, `502 STORAGE_UNAVAILABLE` (retry) |
 | `POST /uploads/{id}/cancel` | none | `200 UploadSession` (`CANCELLED`). Cancelling a cancelled session is OK | `404`, `409 UPLOAD_ALREADY_COMPLETED` |
 | `GET /videos/{id}/processing-status` | none | `200 ProcessingStatus` | `401`, `404` (not your video) |
 

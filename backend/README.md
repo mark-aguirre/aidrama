@@ -81,9 +81,13 @@ com.aidrama
 
 ## Design decisions
 
-- **Upload approach:** presigned `PUT` of the whole file (single request, up to 2 GiB). The signature covers method, `Content-Type` and
-  `Content-Length`, so storage rejects a different type or size. The multipart columns of `upload_sessions` are unused. Multipart
-  (spec 3.7 "large file support") is the next step for files over a few hundred MB on unreliable networks.
+- **Upload approach:** a small file gets a presigned `PUT` of the whole file (single request); the signature covers method,
+  `Content-Type` and `Content-Length`, so storage rejects a different type or size. A file at or above
+  `aidrama.storage.multipart-threshold-bytes` (default 90 MiB) is uploaded with S3 multipart instead: `initiate` opens the
+  multipart upload and returns a `multipart` plan of presigned per-part `PUT` URLs (each part `multipart-part-bytes`, default
+  90 MiB), the browser PUTs each part and reads its `ETag`, and `POST /uploads/{id}/complete-multipart` assembles them. This keeps
+  every request body under a proxy's limit (Cloudflare caps at 100 MB), which single-PUT large files hit (spec 3.7 "large file
+  support"). The `multipart_upload_id`, `part_size_bytes` and `total_parts` columns of `upload_sessions` hold the plan.
 - **Visibility is one definition.** `VideoSpecs.discoverable()` (lists) and `linkable()` (share links) hold the published, public,
   not-deleted and parent-series predicate from SCHEMA.md rule 1. Every public query composes one of them.
 - **Ownership.** Services take the caller from the validated token and load by `(id, creator_id)`. Another creator's id is a `404`.

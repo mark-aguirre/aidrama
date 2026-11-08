@@ -33,8 +33,12 @@ else
   echo "⚠️  $ENV_FILE not found; relying on environment / defaults."
 fi
 
-if [ -z "$NEXT_PUBLIC_API_BASE_URL" ]; then
-  echo "⚠️  NEXT_PUBLIC_API_BASE_URL is not set (checked environment and $ENV_FILE)."
+# NEXT_PUBLIC_API_BASE_URL is intentionally empty now: the browser calls the
+# same-origin /api/v1 proxy. The server reaches the backend via
+# API_INTERNAL_BASE_URL (runtime, not baked), so that one is required.
+if [ -z "$API_INTERNAL_BASE_URL" ]; then
+  echo "⚠️  API_INTERNAL_BASE_URL is not set (checked environment and $ENV_FILE)."
+  echo "    Set it to the absolute backend base, e.g. https://api.example.com/api/v1"
   exit 1
 fi
 
@@ -46,8 +50,9 @@ usage() {
   echo "  REMOTE_USER               - SSH username (default: user)"
   echo "  REMOTE_HOST               - Server IP or hostname (default: your-server-ip)"
   echo ""
-  echo "Build config (read from ./.env, overridable from the environment):"
-  echo "  NEXT_PUBLIC_API_BASE_URL  - Backend API base URL baked into the browser bundle"
+  echo "Config (read from ./.env, overridable from the environment):"
+  echo "  API_INTERNAL_BASE_URL     - Absolute backend base the server proxies to (runtime)"
+  echo "  NEXT_PUBLIC_API_BASE_URL  - Optional: send the browser straight at an API host (baked)"
   echo "  MEDIA_IMAGE_HOSTS         - Comma-separated next/image media hosts"
   exit 1
 }
@@ -59,7 +64,8 @@ fi
 
 # === Step 1: Build Docker image ===
 echo "==> Building Docker image: $IMAGE_NAME"
-echo "    NEXT_PUBLIC_API_BASE_URL=$NEXT_PUBLIC_API_BASE_URL"
+echo "    NEXT_PUBLIC_API_BASE_URL=${NEXT_PUBLIC_API_BASE_URL:-<same-origin /api/v1>}"
+echo "    API_INTERNAL_BASE_URL=$API_INTERNAL_BASE_URL"
 echo "    MEDIA_IMAGE_HOSTS=$MEDIA_IMAGE_HOSTS"
 # Allow the Next.js image optimizer to fetch from private/LAN IPs. Needed
 # because media (SeaweedFS) is served from a 192.168.x.x host rather than a
@@ -95,9 +101,9 @@ ssh "$REMOTE_USER@$REMOTE_HOST" bash -s <<EOF
   docker rm "$CONTAINER_NAME" 2>/dev/null || true
 
   echo "    Starting container: $CONTAINER_NAME on port $HOST_PORT"
-  # Host networking: the container shares the host's network stack so that
-  # server-side rendering can reach the backend at the same LAN address the
-  # browser uses (NEXT_PUBLIC_API_BASE_URL is one URL for both). With --network
+  # Host networking: the container shares the host's network stack so the
+  # Next.js server (the /api/v1 proxy + SSR) can reach the backend at
+  # API_INTERNAL_BASE_URL, including a LAN address. With --network
   # host there is no -p mapping; the app listens directly on the host, so PORT
   # is set to the desired host port instead.
   docker run -d --name "$CONTAINER_NAME" \
@@ -105,6 +111,7 @@ ssh "$REMOTE_USER@$REMOTE_HOST" bash -s <<EOF
     --network host \
     -e PORT="$HOST_PORT" \
     -e HOSTNAME=0.0.0.0 \
+    -e API_INTERNAL_BASE_URL="$API_INTERNAL_BASE_URL" \
     -e ALLOW_LOCAL_IP_IMAGES="$ALLOW_LOCAL_IP_IMAGES" \
     "$IMAGE_NAME"
 

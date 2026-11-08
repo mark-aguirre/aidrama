@@ -74,11 +74,16 @@ ssh "$REMOTE_USER@$REMOTE_HOST" bash -s <<EOF
   docker rm "$CONTAINER_NAME" 2>/dev/null || true
 
   echo "    Starting container: $CONTAINER_NAME on port $HOST_PORT"
+  # The storage origin is published on this host's LAN address. Host networking
+  # lets the backend's signed S3 HEAD requests reach it directly, avoiding the
+  # Docker bridge route that caused upload completion to return STORAGE_UNAVAILABLE.
+  # With --network host there is no -p mapping, so Spring Boot listens on the
+  # published host port itself.
   docker run -d --name "$CONTAINER_NAME" \
     --restart unless-stopped \
+    --network host \
     --env-file "$REMOTE_ENV_FILE" \
-    -e PORT="$CONTAINER_PORT" \
-    -p "$HOST_PORT:$CONTAINER_PORT" \
+    -e PORT="$HOST_PORT" \
     "$IMAGE_NAME"
 
   echo "    Cleaning up transferred files..."

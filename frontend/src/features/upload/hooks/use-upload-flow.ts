@@ -4,8 +4,8 @@ import * as React from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api/client";
 import { ApiError, CLIENT_ERROR_CODES, isAbortError, isApiError } from "@/lib/api/errors";
-import { putFileToSignedUrl } from "@/lib/api/upload";
-import type { UploadSession, UploadTarget, Video } from "@/types/domain";
+import { putFileToSignedUrl, putPartsToSignedUrls } from "@/lib/api/upload";
+import type { CompletedUploadPart, UploadSession, Video } from "@/types/domain";
 import { checkThumbnailFile, checkVideoFile, type UploadDetails } from "../schemas";
 
 /** How often processing status is polled while the video is being transcoded. */
@@ -147,10 +147,9 @@ function reducer(state: FlowState, action: Action): FlowState {
   }
 }
 
-type ActiveSession = UploadSession & { upload: UploadTarget };
-
-function hasTarget(session: UploadSession): session is ActiveSession {
-  return session.upload !== null;
+/** A session ready to receive bytes: either a single-PUT target or a multipart plan. */
+function hasTarget(session: UploadSession): boolean {
+  return session.upload !== null || session.multipart !== null;
 }
 
 function sleep(ms: number, signal: AbortSignal): Promise<void> {
@@ -186,7 +185,7 @@ export async function obtainSession(args: {
   contentType: string;
   previousUploadId: string | null;
   signal: AbortSignal;
-}): Promise<ActiveSession> {
+}): Promise<UploadSession> {
   const { videoId, file, contentType, previousUploadId, signal } = args;
 
   if (previousUploadId) {
@@ -260,14 +259,54 @@ async function uploadThumbnail(args: {
   }
   if (!hasTarget(session)) throw missingTarget();
 
+  // A thumbnail is always below the multipart threshold, so it has a single-PUT target.
+  if (!session.upload) throw missingTarget();
   await putFileToSignedUrl(session.upload, file, { signal });
   await completeWithRetry(session.id, signal);
+}
+
+/**
+ * Transfers the file to a session's target and confirms it, choosing the path the server picked:
+ * a single PUT for small files, or a part-by-part multipart upload for large ones. Progress is
+ * reported 0..100 across the whole transfer. Returns the complete response (processing status).
+ */
+export async function transferAndComplete(
+  session: UploadSession,
+  file: File,
+  options: { signal: AbortSignal; onProgress: (percent: number) => void },
+) {
+  const { signal, onProgress } = options;
+  if (session.multipart) {
+    const parts = await putPartsToSignedUrls(session.multipart, file, { signal, onProgress });
+    return completeMultipartWithRetry(session.id, parts, signal);
+  }
+  if (!session.upload) throw missingTarget();
+  await putFileToSignedUrl(session.upload, file, { signal, onProgress });
+  return completeWithRetry(session.id, signal);
 }
 
 export async function completeWithRetry(uploadId: string, signal: AbortSignal) {
   for (let attempt = 0; ; attempt++) {
     try {
       return await api.completeUpload(uploadId, signal);
+    } catch (error) {
+      const retryable =
+        isApiError(error) && COMPLETE_RETRY_CODES.has(error.code) && attempt < COMPLETE_RETRIES;
+      if (!retryable) throw error;
+      await sleep(1500 * (attempt + 1), signal);
+    }
+  }
+}
+
+/** Same retry policy as {@link completeWithRetry}, for the multipart confirmation endpoint. */
+export async function completeMultipartWithRetry(
+  uploadId: string,
+  parts: CompletedUploadPart[],
+  signal: AbortSignal,
+) {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await api.completeMultipartUpload(uploadId, parts, signal);
     } catch (error) {
       const retryable =
         isApiError(error) && COMPLETE_RETRY_CODES.has(error.code) && attempt < COMPLETE_RETRIES;
@@ -391,12 +430,12 @@ export function useUploadFlow() {
         });
         dispatch({ type: "upload-began", uploadId: session.id });
 
-        await putFileToSignedUrl(session.upload, file, {
+        // Small files upload in one PUT; large files upload in parts (multipart). The server's
+        // session shape picks the path, so the UI code is the same for both.
+        const result = await transferAndComplete(session, file, {
           signal,
           onProgress: (percent) => dispatch({ type: "progress", percent }),
         });
-
-        const result = await completeWithRetry(session.id, signal);
         queryClient.setQueryData(processingStatusKey(videoId), result.processing);
         dispatch({ type: "uploaded" });
       } catch (error) {

@@ -35,7 +35,9 @@ class UploadValidationTest {
             mock(TransactionTemplate.class),
             new AppProperties(
                     null,
-                    new AppProperties.Storage("b", "us-east-1", null, false, null, null, "https://cdn.test.invalid", Duration.ofMinutes(60), 1_000_000L),
+                    new AppProperties.Storage(
+                            "b", "us-east-1", null, null, false, null, null, "https://cdn.test.invalid",
+                            Duration.ofMinutes(60), 1_000_000L, 94_371_840L, 94_371_840L),
                     null, null, null, null, null, null),
             Clock.systemUTC());
 

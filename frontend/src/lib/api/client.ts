@@ -5,6 +5,7 @@ import type {
   AnalyticsPoint,
   AppNotification,
   AuthSession,
+  CompletedUploadPart,
   CompleteUploadResponse,
   CreateVideoRequest,
   Creator,
@@ -26,7 +27,6 @@ import type {
   Video,
   VideoType,
 } from "@/types/domain";
-import { API_BASE_URL } from "./config";
 import { isApiError } from "./errors";
 import { asContract, requestJson, requestVoid } from "./http";
 import type { RequestOptions } from "./http";
@@ -61,8 +61,6 @@ import {
  * Transport (base URL, auth header, 401 -> refresh -> retry, error envelope)
  * lives in ./http.ts; this file only maps endpoints to typed functions.
  */
-
-export { API_BASE_URL };
 
 /** The genre list shown in filters and accepted by the API (spec 3.15). */
 export const GENRES = [
@@ -446,6 +444,27 @@ export const api = {
       {
         path: `/uploads/${encodeURIComponent(uploadId)}/complete`,
         method: "POST",
+        auth: "required",
+        signal,
+      },
+      (json) => completeUploadSchema.parse(json),
+    );
+  },
+
+  /**
+   * POST /uploads/{id}/complete-multipart. Confirms a chunked upload with every part's number and
+   * the ETag the storage returned for it. Idempotent, safe to retry.
+   */
+  async completeMultipartUpload(
+    uploadId: string,
+    parts: CompletedUploadPart[],
+    signal?: AbortSignal,
+  ): Promise<CompleteUploadResponse> {
+    return requestJson(
+      {
+        path: `/uploads/${encodeURIComponent(uploadId)}/complete-multipart`,
+        method: "POST",
+        body: { parts },
         auth: "required",
         signal,
       },

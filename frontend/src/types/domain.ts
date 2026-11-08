@@ -320,6 +320,24 @@ export interface UploadTarget {
   headers: Record<string, string>;
 }
 
+/** One presigned part PUT of a chunked upload: its 1-based number and signed URL. */
+export interface UploadPartTarget {
+  partNumber: number;
+  url: string;
+}
+
+/**
+ * A chunked (S3 multipart) upload plan, present instead of `upload` when the file is large enough
+ * to exceed a single request's body limit (a proxy such as Cloudflare caps at 100 MB). The browser
+ * PUTs each slice of `partSizeBytes` to its `parts[i].url` (the last part is the remainder), reads
+ * the `ETag` response header of each, and sends them to POST /uploads/{id}/complete-multipart.
+ */
+export interface UploadMultipart {
+  partSizeBytes: number;
+  totalParts: number;
+  parts: UploadPartTarget[];
+}
+
 /** What an upload delivers: the source video or a creator-supplied thumbnail image. */
 export type AssetKind = "VIDEO" | "THUMBNAIL";
 
@@ -332,11 +350,20 @@ export interface UploadSession {
   contentType: string;
   sizeBytes: number;
   uploadedBytes: number;
+  /** The single-PUT target for small files. Null when `multipart` is set or the session is done. */
   upload: UploadTarget | null;
+  /** The chunked-upload plan for large files. Null when `upload` is set or the session is done. */
+  multipart: UploadMultipart | null;
   expiresAt: string;
   completedAt: string | null;
   failure: FailureReason | null;
   createdAt: string;
+}
+
+/** One finished part reported on complete: its 1-based number and the storage-returned ETag. */
+export interface CompletedUploadPart {
+  partNumber: number;
+  eTag: string;
 }
 
 export interface InitiateUploadRequest {

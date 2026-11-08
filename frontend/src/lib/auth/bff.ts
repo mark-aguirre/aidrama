@@ -1,7 +1,7 @@
 import "server-only";
 import { NextResponse, type NextRequest } from "next/server";
 import type { z } from "zod";
-import { API_BASE_URL } from "@/lib/api/config";
+import { SERVER_API_BASE_URL } from "@/lib/api/config";
 import { apiErrorFromBody } from "@/lib/api/errors";
 import { authResponseSchema } from "@/lib/api/schemas";
 import type { ApiErrorEnvelope, AuthSession } from "@/types/domain";
@@ -74,7 +74,7 @@ async function callUpstream(
     headers["X-Request-ID"] = requestId;
   }
   try {
-    return await fetch(`${API_BASE_URL}${path}`, {
+    return await fetch(`${SERVER_API_BASE_URL}${path}`, {
       method: "POST",
       headers,
       body: JSON.stringify(body),

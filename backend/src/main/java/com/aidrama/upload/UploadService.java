@@ -14,6 +14,8 @@ import com.aidrama.storage.ObjectStorage.StoredObject;
 import com.aidrama.upload.UploadDtos.Failure;
 import com.aidrama.upload.UploadDtos.InitiateUploadRequest;
 import com.aidrama.upload.UploadDtos.UploadCompleteResponse;
+import com.aidrama.upload.UploadDtos.UploadMultipart;
+import com.aidrama.upload.UploadDtos.UploadPartTarget;
 import com.aidrama.upload.UploadDtos.UploadSessionResponse;
 import com.aidrama.upload.UploadDtos.UploadTarget;
 import com.aidrama.user.Role;
@@ -129,6 +131,16 @@ public class UploadService {
         UUID sessionId = UUID.randomUUID();
         String folder = kind == AssetKind.THUMBNAIL ? "thumbnail" : "original";
         String objectKey = "videos/" + request.videoId() + "/" + folder + "/" + sessionId + "." + extension;
+
+        // A large video is uploaded in parts (S3 multipart) so no single request body exceeds a
+        // proxy's limit. Thumbnails are small and always a single PUT. Starting the multipart upload
+        // is a remote call, done before the transaction so a storage failure does not roll back a
+        // half-opened upload; the id it returns is persisted with the session.
+        boolean multipart = kind == AssetKind.VIDEO && request.sizeBytes() >= props.multipartThresholdBytes();
+        String multipartUploadId = multipart ? storage.createMultipartUpload(objectKey, request.contentType()) : null;
+        long partSize = props.multipartPartBytes();
+        int totalParts = multipart ? (int) ((request.sizeBytes() + partSize - 1) / partSize) : 0;
+
         UploadSession created;
         try {
             created = tx.execute(status -> {
@@ -148,7 +160,7 @@ public class UploadService {
                     video.beginUpload();
                     videos.saveAndFlush(video);
                 }
-                return sessions.saveAndFlush(UploadSession.start(
+                UploadSession session = UploadSession.start(
                         sessionId,
                         caller.id(),
                         video.getId(),
@@ -159,9 +171,16 @@ public class UploadService {
                         storage.bucket(),
                         objectKey,
                         key,
-                        now.plus(props.uploadUrlTtl())));
+                        now.plus(props.uploadUrlTtl()));
+                if (multipart) {
+                    session.useMultipart(multipartUploadId, partSize, totalParts);
+                }
+                return sessions.saveAndFlush(session);
             });
         } catch (DataIntegrityViolationException ex) {
+            if (multipartUploadId != null) {
+                storage.abortMultipartUpload(objectKey, multipartUploadId);
+            }
             // Two requests raced past the checks; the partial unique indexes are the final guard.
             throw new ConflictException("UPLOAD_IN_PROGRESS", "An upload is already in progress for this video.");
         }
@@ -184,13 +203,64 @@ public class UploadService {
         if (!session.isInFlight()) {
             throw new ConflictException("UPLOAD_SESSION_NOT_ACTIVE", "This upload is " + session.getStatus() + " and cannot be completed.");
         }
+        if (session.isMultipart()) {
+            throw new ConflictException(
+                    "UPLOAD_IS_MULTIPART",
+                    "This is a multipart upload. Confirm it with complete-multipart and the uploaded part ETags.");
+        }
         Instant now = Instant.now(clock);
         if (session.isExpired(now.minus(COMPLETION_GRACE))) {
             tx.executeWithoutResult(status -> abandon(session.getId(), caller, UploadStatus.EXPIRED));
             throw new ConflictException("UPLOAD_SESSION_EXPIRED", "This upload session expired. Start a new upload.");
         }
 
-        // Remote call, deliberately outside a transaction.
+        return verifyAndFinish(caller, session, now, uploadId);
+    }
+
+    /**
+     * Confirms a multipart upload: assembles the parts the client PUT into the final object, then
+     * runs the same verification and processing hand-off as a single-PUT complete. Safe to retry;
+     * completing an already completed session returns the same result.
+     */
+    public UploadCompleteResponse completeMultipart(
+            AuthenticatedUser caller, UUID uploadId, List<UploadDtos.CompletedPart> parts) {
+        caller.require(Role.CREATOR);
+        UploadSession session = ownedSession(caller, uploadId);
+
+        if (session.getStatus() == UploadStatus.COMPLETED) {
+            return completion(caller, session);
+        }
+        if (!session.isMultipart()) {
+            throw new ConflictException(
+                    "UPLOAD_NOT_MULTIPART", "This upload is a single request. Confirm it with complete.");
+        }
+        if (!session.isInFlight()) {
+            throw new ConflictException("UPLOAD_SESSION_NOT_ACTIVE", "This upload is " + session.getStatus() + " and cannot be completed.");
+        }
+        Instant now = Instant.now(clock);
+        if (session.isExpired(now.minus(COMPLETION_GRACE))) {
+            storage.abortMultipartUpload(session.getStorageKey(), session.getMultipartUploadId());
+            tx.executeWithoutResult(status -> abandon(session.getId(), caller, UploadStatus.EXPIRED));
+            throw new ConflictException("UPLOAD_SESSION_EXPIRED", "This upload session expired. Start a new upload.");
+        }
+
+        List<ObjectStorage.Part> ordered = parts.stream()
+                .sorted(java.util.Comparator.comparingInt(UploadDtos.CompletedPart::partNumber))
+                .map(p -> new ObjectStorage.Part(p.partNumber(), p.eTag()))
+                .toList();
+        // Remote call: assembles the uploaded parts into the final object.
+        storage.completeMultipartUpload(session.getStorageKey(), session.getMultipartUploadId(), ordered);
+
+        return verifyAndFinish(caller, session, now, uploadId);
+    }
+
+    /**
+     * Shared tail of both complete paths: HEAD the finished object, verify its size and type match
+     * what was declared, then record the asset and queue processing. The HEAD is a remote call made
+     * outside any transaction.
+     */
+    private UploadCompleteResponse verifyAndFinish(
+            AuthenticatedUser caller, UploadSession session, Instant now, UUID uploadId) {
         Optional<StoredObject> stored = storage.head(session.getStorageKey());
         if (stored.isEmpty()) {
             throw new BusinessRuleException(
@@ -220,6 +290,9 @@ public class UploadService {
             throw new ConflictException("UPLOAD_ALREADY_COMPLETED", "This upload is already completed and cannot be cancelled.");
         }
         if (session.isInFlight()) {
+            if (session.isMultipart()) {
+                storage.abortMultipartUpload(session.getStorageKey(), session.getMultipartUploadId());
+            }
             tx.executeWithoutResult(status -> abandon(session.getId(), caller, UploadStatus.CANCELLED));
         }
         return toResponse(ownedSession(caller, uploadId));
@@ -313,6 +386,9 @@ public class UploadService {
     private void expireStaleSessions(Video video, Instant now) {
         for (UploadSession s : sessions.findByVideoIdAndStatusIn(video.getId(), List.of(UploadStatus.PENDING, UploadStatus.UPLOADING))) {
             if (s.isExpired(now.minus(COMPLETION_GRACE))) {
+                if (s.isMultipart()) {
+                    storage.abortMultipartUpload(s.getStorageKey(), s.getMultipartUploadId());
+                }
                 s.expire();
                 sessions.saveAndFlush(s);
                 video.uploadAbandoned();
@@ -338,10 +414,15 @@ public class UploadService {
 
     private UploadSessionResponse toResponse(UploadSession s) {
         UploadTarget target = null;
+        UploadMultipart multipart = null;
         if (s.isInFlight() && !s.isExpired(Instant.now(clock))) {
             Duration remaining = Duration.between(Instant.now(clock), s.getExpiresAt());
-            SignedUpload signed = storage.presignPut(s.getStorageKey(), s.getContentType(), s.getDeclaredSizeBytes(), remaining);
-            target = new UploadTarget(signed.url(), signed.method(), signed.headers());
+            if (s.isMultipart()) {
+                multipart = presignParts(s, remaining);
+            } else {
+                SignedUpload signed = storage.presignPut(s.getStorageKey(), s.getContentType(), s.getDeclaredSizeBytes(), remaining);
+                target = new UploadTarget(signed.url(), signed.method(), signed.headers());
+            }
         }
         Failure failure = s.getStatus() == UploadStatus.FAILED ? new Failure(s.getFailureCode(), s.getFailureMessage()) : null;
         return new UploadSessionResponse(
@@ -354,10 +435,22 @@ public class UploadService {
                 s.getDeclaredSizeBytes(),
                 s.getUploadedBytes(),
                 target,
+                multipart,
                 s.getExpiresAt(),
                 s.getCompletedAt(),
                 failure,
                 s.getCreatedAt());
+    }
+
+    /** Signs one PUT URL per part for a multipart session, in part-number order. */
+    private UploadMultipart presignParts(UploadSession s, Duration ttl) {
+        int total = s.getTotalParts() == null ? 0 : s.getTotalParts();
+        List<UploadPartTarget> parts = new java.util.ArrayList<>(total);
+        for (int partNumber = 1; partNumber <= total; partNumber++) {
+            SignedUpload signed = storage.presignUploadPart(s.getStorageKey(), s.getMultipartUploadId(), partNumber, ttl);
+            parts.add(new UploadPartTarget(partNumber, signed.url()));
+        }
+        return new UploadMultipart(s.getPartSizeBytes(), total, parts);
     }
 
     /** Validates type, extension and size for the asset kind. Returns the extension used in the storage key. */

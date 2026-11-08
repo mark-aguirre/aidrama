@@ -119,6 +119,21 @@ public class UploadSession extends TimestampedEntity {
         return s;
     }
 
+    /**
+     * Records the S3 multipart plan on a freshly started session: the storage-assigned upload id,
+     * the fixed part size and the number of parts the client will PUT. A session without these is a
+     * single whole-file PUT.
+     */
+    public void useMultipart(String multipartUploadId, long partSizeBytes, int totalParts) {
+        this.multipartUploadId = multipartUploadId;
+        this.partSizeBytes = partSizeBytes;
+        this.totalParts = totalParts;
+    }
+
+    public boolean isMultipart() {
+        return multipartUploadId != null;
+    }
+
     public boolean isInFlight() {
         return status == UploadStatus.PENDING || status == UploadStatus.UPLOADING;
     }

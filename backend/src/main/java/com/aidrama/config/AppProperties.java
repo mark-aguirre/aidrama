@@ -49,17 +49,38 @@ public record AppProperties(
             @NotNull @DefaultValue("30d") Duration maxSessionAge,
             @NotNull @DefaultValue("24h") Duration emailVerificationTtl) {}
 
-    /** S3-compatible object storage. */
+    /**
+     * S3-compatible object storage.
+     *
+     * {@code endpoint} is the public, browser-facing base used to presign upload URLs (and usually
+     * matches {@code publicBaseUrl}'s origin). {@code internalEndpoint}, when set, is used instead
+     * for the backend's own server-to-server S3 calls (HEAD, multipart create/complete/abort) so
+     * those signed requests reach the storage origin directly. This matters behind a caching CDN
+     * such as Cloudflare: a CDN fills its cache for a HEAD by fetching the origin with a GET, which
+     * no longer matches a SigV4 signature computed for HEAD, so the origin rejects it with 403.
+     * Point {@code internalEndpoint} at the storage origin to keep signed backend calls off the CDN
+     * while browser presigned URLs keep using the public {@code endpoint}. Blank means fall back to
+     * {@code endpoint}.
+     *
+     * {@code multipartThresholdBytes} is the file size at or above which an upload is split into
+     * {@code multipartPartBytes} chunks (S3 multipart) so no single request body exceeds a proxy's
+     * limit (Cloudflare caps at 100 MB). In production keep the part size at or above the S3 minimum
+     * of 5 MiB and below the proxy limit; the default 90 MiB stays safely under 100 MB after signing
+     * overhead. The validation floor is 1 byte only so tests can exercise the path with tiny sizes.
+     */
     public record Storage(
             @NotBlank String bucket,
             @NotBlank String region,
             String endpoint,
+            String internalEndpoint,
             @DefaultValue("false") boolean pathStyle,
             String accessKeyId,
             String secretAccessKey,
             @NotBlank String publicBaseUrl,
             @NotNull @DefaultValue("60m") Duration uploadUrlTtl,
-            @Min(1) @Max(5_368_709_120L) @DefaultValue("2147483648") long maxUploadBytes) {}
+            @Min(1) @Max(5_368_709_120L) @DefaultValue("2147483648") long maxUploadBytes,
+            @Min(1) @Max(5_368_709_120L) @DefaultValue("94371840") long multipartThresholdBytes,
+            @Min(1) @Max(5_368_709_120L) @DefaultValue("94371840") long multipartPartBytes) {}
 
     /** Browser origins allowed by CORS. Explicit list, no wildcard. */
     public record Cors(@NotEmpty List<@NotBlank String> allowedOrigins) {}

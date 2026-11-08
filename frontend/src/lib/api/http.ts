@@ -13,7 +13,7 @@ import {
   networkError,
   timeoutError,
 } from "./errors";
-import { API_BASE_URL } from "./config";
+import { BROWSER_API_BASE_URL, SERVER_API_BASE_URL } from "./config";
 import { authSessionSchema } from "./schemas";
 
 /**
@@ -49,10 +49,13 @@ function isBrowser(): boolean {
 }
 
 function buildUrl(opts: RequestOptions): string {
-  const base = opts.baseUrl ?? API_BASE_URL;
+  // Browser calls go same-origin through the /api/v1 proxy; server rendering
+  // calls Spring Boot directly and needs an absolute URL.
+  const base =
+    opts.baseUrl ?? (isBrowser() ? BROWSER_API_BASE_URL : SERVER_API_BASE_URL);
   if (!isBrowser() && !/^https?:\/\//.test(base)) {
     throw new Error(
-      "NEXT_PUBLIC_API_BASE_URL must be an absolute URL to fetch during server rendering.",
+      "The server API base URL must be absolute (set API_INTERNAL_BASE_URL or NEXT_PUBLIC_API_BASE_URL).",
     );
   }
   const params = new URLSearchParams();

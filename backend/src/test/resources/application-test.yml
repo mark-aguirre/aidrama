@@ -18,6 +18,11 @@ aidrama:
     secret-access-key: test
     public-base-url: https://cdn.test.invalid/media
     max-upload-bytes: 1000000
+    # Tiny thresholds so the multipart path is exercised without moving real bytes (the fake storage
+    # tracks only metadata). Existing tests use SIZE=5000, below the threshold, so they keep taking
+    # the single-PUT path; a multipart test declares a size at or above 10000 to split into parts.
+    multipart-threshold-bytes: 10000
+    multipart-part-bytes: 10000
   cors:
     allowed-origins: http://localhost:3000
   web:

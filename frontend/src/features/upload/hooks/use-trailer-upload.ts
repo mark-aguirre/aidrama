@@ -4,14 +4,13 @@ import * as React from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api/client";
 import { ApiError, isAbortError, isApiError } from "@/lib/api/errors";
-import { putFileToSignedUrl } from "@/lib/api/upload";
 import { checkVideoFile, trailerTitleFor, type UploadDetails } from "../schemas";
 import {
   POLL_INTERVAL_MS,
-  completeWithRetry,
   missingTarget,
   obtainSession,
   processingStatusKey,
+  transferAndComplete,
 } from "./use-upload-flow";
 
 /**
@@ -272,12 +271,10 @@ export function useTrailerUpload(titleId: string | null) {
         });
         dispatch({ type: "upload-began", uploadId: session.id });
 
-        await putFileToSignedUrl(session.upload, file, {
+        const result = await transferAndComplete(session, file, {
           signal,
           onProgress: (percent) => dispatch({ type: "progress", percent }),
         });
-
-        const result = await completeWithRetry(session.id, signal);
         queryClient.setQueryData(processingStatusKey(videoId), result.processing);
         dispatch({ type: "uploaded" });
       } catch (error) {

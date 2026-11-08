@@ -26,9 +26,11 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
 # Build-time config. These are baked into the build:
-#   - NEXT_PUBLIC_API_BASE_URL is inlined into the browser bundle, so it must be
-#     an address the end user's browser can reach (not localhost, not a private
-#     IP unless clients are on that LAN).
+#   - NEXT_PUBLIC_API_BASE_URL is inlined into the browser bundle. Normally
+#     LEAVE IT EMPTY so the browser calls the same-origin /api/v1 proxy; the
+#     server reaches the backend via API_INTERNAL_BASE_URL (a RUNTIME env, not
+#     baked, set at `docker run`). Set it only to send the browser straight at
+#     an absolute API host.
 #   - MEDIA_IMAGE_HOSTS whitelists next/image remote hosts (server-side only).
 # Override at build time:
 #   docker build \
