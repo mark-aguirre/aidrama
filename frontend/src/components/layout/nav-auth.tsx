@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { SignInPopover } from "@/features/auth/components/sign-in-popover";
+import { SignUpPopover } from "@/features/auth/components/sign-up-popover";
 import { useRestoredSession } from "@/features/auth/hooks/use-restored-session";
 import { api } from "@/lib/api/client";
 
@@ -57,9 +58,7 @@ export function NavAuth() {
   return (
     <>
       <SignInPopover />
-      <Button size="sm" asChild>
-        <Link href="/signup">Get started</Link>
-      </Button>
+      <SignUpPopover />
     </>
   );
 }

@@ -25,7 +25,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { useSignIn } from "@/features/auth/components/sign-in-provider";
+import { useSignIn, useSignUp } from "@/features/auth/components/sign-in-provider";
 import { useLogout } from "@/features/auth/hooks/use-logout";
 import { useRestoredSession } from "@/features/auth/hooks/use-restored-session";
 import type { AuthUser } from "@/types/domain";
@@ -91,9 +91,11 @@ export function MobileNavSheet() {
   const session = useRestoredSession();
   const { logout, pending, failed } = useLogout();
   const signIn = useSignIn();
+  const signUp = useSignUp();
   const [open, setOpen] = React.useState(false);
   const menuButtonRef = React.useRef<HTMLButtonElement>(null);
   const signInRequested = React.useRef(false);
+  const signUpRequested = React.useRef(false);
 
   const authenticated = session.status === "authenticated";
   const anonymous = session.status === "anonymous";
@@ -109,16 +111,27 @@ export function MobileNavSheet() {
     setOpen(false);
   }
 
+  /** Close the sheet first; its close handler then opens the sign-up panel. */
+  function openSignUpAfterClose() {
+    signUpRequested.current = true;
+    setOpen(false);
+  }
+
   /**
-   * Runs when the sheet has finished closing. If the visitor asked to sign in,
-   * open the panel now (so the two modals never overlap) and send focus back
-   * to the menu button when the panel closes, since the "Sign in" row is gone.
+   * Runs when the sheet has finished closing. If the visitor asked to sign in
+   * or sign up, open the panel now (so the two modals never overlap) and send
+   * focus back to the menu button when the panel closes, since the rows that
+   * opened it are gone.
    */
   function handleSheetCloseAutoFocus(event: Event) {
-    if (!signInRequested.current) return;
+    const wantsSignIn = signInRequested.current;
+    const wantsSignUp = signUpRequested.current;
     signInRequested.current = false;
+    signUpRequested.current = false;
+    if (!wantsSignIn && !wantsSignUp) return;
     event.preventDefault();
-    signIn.open({ returnFocusTo: menuButtonRef.current });
+    const panel = wantsSignUp ? signUp : signIn;
+    panel.open({ returnFocusTo: menuButtonRef.current });
   }
 
   return (
@@ -235,14 +248,15 @@ export function MobileNavSheet() {
                     </button>
                   </li>
                   <li>
-                    <SheetClose asChild>
-                      <Button size="lg" asChild className="w-full">
-                        <Link href="/signup">
-                          <UserPlus aria-hidden="true" />
-                          Get started
-                        </Link>
-                      </Button>
-                    </SheetClose>
+                    <Button
+                      size="lg"
+                      className="w-full"
+                      aria-haspopup="dialog"
+                      onClick={openSignUpAfterClose}
+                    >
+                      <UserPlus aria-hidden="true" />
+                      Get started
+                    </Button>
                   </li>
                 </ul>
               </>

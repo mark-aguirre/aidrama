@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { SignInDropdown } from "./sign-in-dropdown";
+import { SignInDropdown, type AuthMode } from "./sign-in-dropdown";
 
 export interface OpenSignInOptions {
   /**
@@ -15,32 +15,54 @@ export interface OpenSignInOptions {
   onSuccess?: () => void;
 }
 
-interface SignInControls {
+interface AuthControls {
   open: (options?: OpenSignInOptions) => void;
 }
 
-const SignInContext = React.createContext<SignInControls | null>(null);
+const SignInContext = React.createContext<AuthControls | null>(null);
+const SignUpContext = React.createContext<AuthControls | null>(null);
 
 /**
- * Owns the shared sign-in panel (bottom sheet on phones, card from `sm` up)
- * that the mobile header, menu sheet, tab bar and Like button open in place.
- * The desktop navbar has its own anchored `SignInPopover`. On success it closes the panel and refreshes the route
+ * Owns the shared auth panel (bottom sheet on phones, card from `sm` up) that
+ * hosts both the sign-in and sign-up forms. The mobile header, menu sheet, tab
+ * bar, Studio gate and Like button open it in place through `useSignIn` /
+ * `useSignUp`; the "Log in" / "Create an account" links inside the forms flip
+ * the panel between the two modes. The desktop navbar has its own anchored
+ * `SignInPopover` / `SignUpPopover`.
+ *
+ * On a successful login it closes the panel and refreshes the route
  * (`api.login` has already published the session, so session-driven UI such as
- * the navbar flips to signed-in on its own), then runs the caller's `onSuccess`.
+ * the navbar flips to signed-in on its own), then runs the caller's
+ * `onSuccess`.
  */
 export function SignInProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [isOpen, setIsOpen] = React.useState(false);
+  const [mode, setMode] = React.useState<AuthMode>("sign-in");
   const returnFocusRef = React.useRef<HTMLElement | null>(null);
   const onSuccessRef = React.useRef<(() => void) | undefined>(undefined);
 
-  const open = React.useCallback((options: OpenSignInOptions = {}) => {
-    const active = document.activeElement;
-    returnFocusRef.current =
-      options.returnFocusTo ?? (active instanceof HTMLElement ? active : null);
-    onSuccessRef.current = options.onSuccess;
-    setIsOpen(true);
-  }, []);
+  const openWithMode = React.useCallback(
+    (nextMode: AuthMode, options: OpenSignInOptions = {}) => {
+      const active = document.activeElement;
+      returnFocusRef.current =
+        options.returnFocusTo ??
+        (active instanceof HTMLElement ? active : null);
+      onSuccessRef.current = options.onSuccess;
+      setMode(nextMode);
+      setIsOpen(true);
+    },
+    [],
+  );
+
+  const openSignIn = React.useCallback(
+    (options?: OpenSignInOptions) => openWithMode("sign-in", options),
+    [openWithMode],
+  );
+  const openSignUp = React.useCallback(
+    (options?: OpenSignInOptions) => openWithMode("sign-up", options),
+    [openWithMode],
+  );
 
   const handleOpenChange = React.useCallback((next: boolean) => {
     setIsOpen(next);
@@ -63,26 +85,46 @@ export function SignInProvider({ children }: { children: React.ReactNode }) {
     if (target?.isConnected) target.focus();
   }, []);
 
-  const controls = React.useMemo<SignInControls>(() => ({ open }), [open]);
+  const signInControls = React.useMemo<AuthControls>(
+    () => ({ open: openSignIn }),
+    [openSignIn],
+  );
+  const signUpControls = React.useMemo<AuthControls>(
+    () => ({ open: openSignUp }),
+    [openSignUp],
+  );
 
   return (
-    <SignInContext.Provider value={controls}>
-      {children}
-      <SignInDropdown
-        open={isOpen}
-        onOpenChange={handleOpenChange}
-        onSuccess={handleSuccess}
-        onCloseAutoFocus={handleCloseAutoFocus}
-      />
+    <SignInContext.Provider value={signInControls}>
+      <SignUpContext.Provider value={signUpControls}>
+        {children}
+        <SignInDropdown
+          open={isOpen}
+          mode={mode}
+          onOpenChange={handleOpenChange}
+          onModeChange={setMode}
+          onSuccess={handleSuccess}
+          onCloseAutoFocus={handleCloseAutoFocus}
+        />
+      </SignUpContext.Provider>
     </SignInContext.Provider>
   );
 }
 
-/** Opens the shared sign-in panel. Must be used under `SignInProvider`. */
-export function useSignIn(): SignInControls {
+/** Opens the shared panel on the sign-in form. Must be used under `SignInProvider`. */
+export function useSignIn(): AuthControls {
   const controls = React.useContext(SignInContext);
   if (!controls) {
     throw new Error("useSignIn must be used within a SignInProvider.");
+  }
+  return controls;
+}
+
+/** Opens the shared panel on the sign-up form. Must be used under `SignInProvider`. */
+export function useSignUp(): AuthControls {
+  const controls = React.useContext(SignUpContext);
+  if (!controls) {
+    throw new Error("useSignUp must be used within a SignInProvider.");
   }
   return controls;
 }

@@ -33,8 +33,6 @@ export function SignInPopover() {
     router.refresh();
   }, [router]);
 
-  const close = React.useCallback(() => setOpen(false), []);
-
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -66,11 +64,7 @@ export function SignInPopover() {
           </p>
         </div>
 
-        <LoginForm
-          idPrefix="nav-signin-"
-          onSuccess={handleSuccess}
-          onNavigate={close}
-        />
+        <LoginForm idPrefix="nav-signin-" onSuccess={handleSuccess} />
       </PopoverContent>
     </Popover>
   );

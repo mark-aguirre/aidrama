@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2 } from "lucide-react";
@@ -30,9 +29,15 @@ function isRegisterField(field: string): field is RegisterField {
 
 export function RegisterForm({
   onRegistered,
+  onSwitchToSignIn,
+  idPrefix = "",
 }: {
   /** Called with the address the account was created for. */
   onRegistered: (email: string) => void;
+  /** Switches the shared auth panel to the sign-in form (the "Log in" links). */
+  onSwitchToSignIn: () => void;
+  /** Prefix for field ids, so two register forms on one page never share ids. */
+  idPrefix?: string;
 }) {
   const {
     register,
@@ -91,14 +96,14 @@ export function RegisterForm({
   return (
     <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex flex-col gap-4">
       <Field
-        id="displayName"
+        id={`${idPrefix}displayName`}
         label="Display name"
         autoComplete="name"
         error={errors.displayName?.message}
         {...register("displayName")}
       />
       <Field
-        id="username"
+        id={`${idPrefix}username`}
         label="Username"
         autoComplete="username"
         description="Lowercase letters, numbers, and underscores."
@@ -106,22 +111,26 @@ export function RegisterForm({
         {...register("username")}
       />
       <Field
-        id="email"
+        id={`${idPrefix}email`}
         label="Email"
         type="email"
         autoComplete="email"
         error={errors.email?.message}
         errorAction={
           emailTaken ? (
-            <Link href="/login" className="text-primary hover:underline">
+            <button
+              type="button"
+              onClick={onSwitchToSignIn}
+              className="text-primary hover:underline"
+            >
               Log in instead
-            </Link>
+            </button>
           ) : undefined
         }
         {...register("email")}
       />
       <Field
-        id="password"
+        id={`${idPrefix}password`}
         label="Password"
         type="password"
         autoComplete="new-password"
@@ -130,7 +139,7 @@ export function RegisterForm({
         {...register("password")}
       />
       <Field
-        id="confirmPassword"
+        id={`${idPrefix}confirmPassword`}
         label="Confirm password"
         type="password"
         autoComplete="new-password"
@@ -151,9 +160,13 @@ export function RegisterForm({
 
       <p className="text-center text-sm text-muted-foreground">
         Already have an account?{" "}
-        <Link href="/login" className="text-primary hover:underline">
+        <button
+          type="button"
+          onClick={onSwitchToSignIn}
+          className="text-primary hover:underline"
+        >
           Log in
-        </Link>
+        </button>
       </p>
     </form>
   );

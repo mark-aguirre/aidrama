@@ -124,9 +124,11 @@ export function WatchView({
       {related.length > 0 && (
         <aside aria-label="Related videos" className="flex flex-col gap-5">
           <h2 className="font-display text-lg text-foreground">Keep watching</h2>
-          {related.map((r) => (
-            <VideoCard key={r.id} video={r} />
-          ))}
+          <div className="no-scrollbar flex max-h-[calc(100vh-7rem)] flex-col gap-5 overflow-y-auto">
+            {related.map((r) => (
+              <VideoCard key={r.id} video={r} />
+            ))}
+          </div>
         </aside>
       )}
     </div>

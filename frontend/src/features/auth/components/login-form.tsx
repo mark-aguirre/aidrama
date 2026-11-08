@@ -1,38 +1,36 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api/client";
 import { errorMessage } from "@/lib/api/errors";
-import { safeRedirectPath } from "@/lib/auth/redirect";
 import { Field } from "./field";
 import { loginSchema, type LoginValues } from "../schemas";
 
 export interface LoginFormProps {
   /**
-   * Inline use: called after a successful login instead of redirecting, so the
-   * host surface (for example the sign-in dropdown) decides what happens next.
-   * Omit it on the /login page to redirect to the `?next=` path.
+   * Called after a successful login, so the host surface (the sign-in popover
+   * or the shared dropdown) decides what happens next.
    */
-  onSuccess?: () => void;
-  /** Called when the "Create an account" link is followed, so an inline host can close. */
-  onNavigate?: () => void;
+  onSuccess: () => void;
+  /**
+   * Switches the shared auth panel to the sign-up form. When set, the form
+   * shows a "Create an account" button beneath the submit button.
+   */
+  onSwitchToSignUp?: () => void;
   /** Prefix for field ids, so two login forms on one page never share ids. */
   idPrefix?: string;
 }
 
-interface LoginFormBodyProps {
-  onSuccess: () => void;
-  onNavigate?: () => void;
-  idPrefix: string;
-}
-
-function LoginFormBody({ onSuccess, onNavigate, idPrefix }: LoginFormBodyProps) {
+/**
+ * Email and password login, used inline inside the sign-in popover and the
+ * shared auth dropdown. On success it calls `onSuccess`; the host closes the
+ * panel and refreshes.
+ */
+export function LoginForm({ onSuccess, onSwitchToSignUp, idPrefix = "" }: LoginFormProps) {
   const {
     register,
     handleSubmit,
@@ -87,45 +85,18 @@ function LoginFormBody({ onSuccess, onNavigate, idPrefix }: LoginFormBodyProps) 
         Log in
       </Button>
 
-      <p className="text-center text-sm text-muted-foreground">
-        New here?{" "}
-        <Link
-          href="/signup"
-          onClick={onNavigate}
-          className="text-primary hover:underline"
-        >
-          Create an account
-        </Link>
-      </p>
+      {onSwitchToSignUp && (
+        <p className="text-center text-sm text-muted-foreground">
+          New here?{" "}
+          <button
+            type="button"
+            onClick={onSwitchToSignUp}
+            className="text-primary hover:underline"
+          >
+            Create an account
+          </button>
+        </p>
+      )}
     </form>
   );
-}
-
-/** Reads `?next=` and redirects there after login. Needs a Suspense boundary. */
-function RedirectingLoginForm({ onNavigate, idPrefix }: Omit<LoginFormBodyProps, "onSuccess">) {
-  const router = useRouter();
-  const next = useSearchParams().get("next");
-
-  const redirect = React.useCallback(
-    () => router.replace(safeRedirectPath(next)),
-    [router, next],
-  );
-
-  return (
-    <LoginFormBody onSuccess={redirect} onNavigate={onNavigate} idPrefix={idPrefix} />
-  );
-}
-
-/**
- * Email and password login. Without `onSuccess` it is the /login page form and
- * redirects to a safe `?next=` path. With `onSuccess` it runs inline and never
- * reads the URL, so it needs no Suspense boundary.
- */
-export function LoginForm({ onSuccess, onNavigate, idPrefix = "" }: LoginFormProps) {
-  if (onSuccess) {
-    return (
-      <LoginFormBody onSuccess={onSuccess} onNavigate={onNavigate} idPrefix={idPrefix} />
-    );
-  }
-  return <RedirectingLoginForm onNavigate={onNavigate} idPrefix={idPrefix} />;
 }

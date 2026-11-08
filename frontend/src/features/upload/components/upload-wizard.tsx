@@ -79,7 +79,7 @@ function StepHeading({ className, ...props }: React.ComponentProps<"h2">) {
  */
 export function UploadWizard() {
   return (
-    <RequireCreator returnTo="/studio/upload">
+    <RequireCreator>
       <WizardBody />
     </RequireCreator>
   );

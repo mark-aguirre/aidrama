@@ -6,10 +6,10 @@ import { AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api/client";
 import { isApiError } from "@/lib/api/errors";
-import { loginUrl } from "@/lib/auth/redirect";
 import { useRestoredSession } from "../hooks/use-restored-session";
 import { AuthShell } from "./auth-shell";
 import { ResendVerification } from "./resend-verification";
+import { useSignIn } from "./sign-in-provider";
 
 type VerifyState = "verifying" | "success" | "invalid" | "error";
 
@@ -26,6 +26,7 @@ export function VerifyEmailFlow({ token }: { token: string | null }) {
   const [attempt, setAttempt] = React.useState(0);
   const headingRef = React.useRef<HTMLHeadingElement>(null);
   const session = useRestoredSession();
+  const signIn = useSignIn();
 
   React.useEffect(() => {
     if (!token) return;
@@ -116,8 +117,8 @@ export function VerifyEmailFlow({ token }: { token: string | null }) {
         {session.status === "authenticated" ? (
           <ResendVerification label="Resend verification email" />
         ) : (
-          <Button asChild className="w-full">
-            <Link href={loginUrl("/verify-email")}>Log in to resend the email</Link>
+          <Button onClick={() => signIn.open()} className="w-full">
+            Sign in to resend the email
           </Button>
         )}
       </div>

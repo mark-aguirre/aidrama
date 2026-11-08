@@ -1,33 +1,33 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { AlertCircle, Loader2, ShieldAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { loginUrl } from "@/lib/auth/redirect";
 import { useRestoredSession } from "../hooks/use-restored-session";
+import { useSignIn } from "./sign-in-provider";
 
 /**
  * Client-side guard for Studio screens that call creator-only endpoints.
  *
  * This is a usability layer: the API enforces authentication and the CREATOR
- * role on every `/creator/*` and `/uploads/*` call. Anonymous visitors are sent
- * to the login page and returned to `returnTo` afterwards.
+ * role on every `/creator/*` and `/uploads/*` call. Anonymous visitors get the
+ * shared sign-in panel; a successful login refreshes the session in place and
+ * the gate renders its children.
  */
 export function RequireCreator({
-  returnTo,
   children,
 }: {
-  returnTo: string;
   children: React.ReactNode;
 }) {
-  const router = useRouter();
   const session = useRestoredSession();
+  const signIn = useSignIn();
 
+  const anonymous = session.status === "anonymous";
+
+  // Open the sign-in panel as soon as we know the visitor is anonymous.
   React.useEffect(() => {
-    if (session.status === "anonymous") router.replace(loginUrl(returnTo));
-  }, [session.status, returnTo, router]);
+    if (anonymous) signIn.open();
+  }, [anonymous, signIn]);
 
   if (session.user) {
     if (!session.user.roles.includes("CREATOR")) {
@@ -51,6 +51,17 @@ export function RequireCreator({
     );
   }
 
+  if (anonymous) {
+    return (
+      <Notice icon={<ShieldAlert aria-hidden="true" />} title="Sign in to continue">
+        The Creator Studio is for signed-in creators.
+        <Button onClick={() => signIn.open()} className="mt-4">
+          Sign in
+        </Button>
+      </Notice>
+    );
+  }
+
   return (
     <div
       role="status"
@@ -58,16 +69,7 @@ export function RequireCreator({
       className="flex items-center justify-center gap-2 py-24 text-sm text-muted-foreground"
     >
       <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-      {session.status === "anonymous" ? (
-        <>
-          Redirecting to{" "}
-          <Link href={loginUrl(returnTo)} className="text-primary hover:underline">
-            log in
-          </Link>
-        </>
-      ) : (
-        "Checking your session"
-      )}
+      Checking your session
     </div>
   );
 }

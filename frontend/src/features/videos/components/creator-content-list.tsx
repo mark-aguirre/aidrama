@@ -73,7 +73,7 @@ const PANEL_LABEL: Record<PanelKind, string> = {
 /** The signed-in creator's videos with their processing lifecycle (design S5). */
 export function CreatorContentList() {
   return (
-    <RequireCreator returnTo="/studio/content">
+    <RequireCreator>
       <ContentBody />
     </RequireCreator>
   );
