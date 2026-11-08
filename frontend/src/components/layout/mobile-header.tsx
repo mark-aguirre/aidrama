@@ -31,13 +31,20 @@ const TITLES: Readonly<Record<string, string>> = {
   "/studio/comments": "Comments",
 };
 
-/** Scroll distance before the header may hide, and the movement needed to react. */
+/**
+ * Scroll distance before the header may hide, and the movement needed to
+ * react. The hide threshold is larger than the show threshold so ordinary
+ * finger wobble while reading doesn't flip the header in and out (which reads
+ * as scroll jank); a deliberate downward swipe still hides it promptly.
+ */
 const HIDE_AFTER_PX = 64;
-const SCROLL_DELTA_PX = 6;
+const HIDE_DELTA_PX = 24;
+const SHOW_DELTA_PX = 8;
 
 /**
  * Hides the header while scrolling down and shows it on scroll up. Does
  * nothing when the user prefers reduced motion, so the header stays put.
+ * Direction changes reset the accumulator so a short reverse swipe reacts.
  */
 function useScrollHidden(): boolean {
   const [hidden, setHidden] = React.useState(false);
@@ -45,20 +52,27 @@ function useScrollHidden(): boolean {
   React.useEffect(() => {
     const query = window.matchMedia("(prefers-reduced-motion: reduce)");
     let lastY = window.scrollY;
+    let moved = 0;
 
     function onScroll() {
       const y = window.scrollY;
       const delta = y - lastY;
+      lastY = y;
+
       if (query.matches || y <= HIDE_AFTER_PX) {
+        moved = 0;
         setHidden(false);
-      } else if (delta > SCROLL_DELTA_PX) {
-        setHidden(true);
-      } else if (delta < -SCROLL_DELTA_PX) {
-        setHidden(false);
-      } else {
         return;
       }
-      lastY = y;
+
+      // Accumulate movement in the current direction; flip the sign on reversal.
+      moved = Math.sign(moved) === Math.sign(delta) ? moved + delta : delta;
+
+      if (moved > HIDE_DELTA_PX) {
+        setHidden(true);
+      } else if (moved < -SHOW_DELTA_PX) {
+        setHidden(false);
+      }
     }
 
     function onMotionPreferenceChange() {
@@ -90,7 +104,7 @@ export function MobileHeader() {
   return (
     <header
       className={cn(
-        "sticky top-0 z-30 border-b border-white/5 bg-background/60 backdrop-blur-xl transition-transform duration-200 focus-within:translate-y-0 motion-reduce:transition-none lg:hidden",
+        "sticky top-0 z-30 border-b border-white/5 bg-background/60 backdrop-blur-xl transition-transform duration-150 ease-out [transform:translateZ(0)] [backface-visibility:hidden] focus-within:translate-y-0 motion-reduce:transition-none lg:hidden",
         hidden && "-translate-y-full",
       )}
     >

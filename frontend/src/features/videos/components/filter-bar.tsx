@@ -41,11 +41,12 @@ export function FilterBar({ sortable = true }: { sortable?: boolean }) {
 
   return (
     <div className="mb-8 flex flex-col gap-5">
-      {/* Genre pills wrap onto new lines, no scrollbar. */}
+      {/* On mobile the pills are one horizontal scroll row so they don't eat
+          the screen; from sm up they wrap onto new lines as before. */}
       <div
         role="group"
         aria-label="Filter by genre"
-        className="flex flex-wrap gap-2"
+        className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0"
       >
         <GenrePill
           label="All"

@@ -61,9 +61,12 @@ export function FeaturedHero({
             fill
             priority
             sizes="100vw"
-            // Narrow screens keep the right of the frame (where the subject
-            // usually sits) out from under the text; wide screens centre it.
-            className="animate-backdrop object-cover object-[70%_center] lg:object-center"
+            // The backdrop is often a portrait thumbnail, so object-cover
+            // crops it hard on a wide hero. Narrow screens keep the right of
+            // the frame (where the subject usually sits) clear of the text;
+            // wide screens anchor to the upper-centre so the subject's face
+            // stays in frame instead of being cropped out by a dead centre.
+            className="animate-backdrop object-cover object-[70%_center] lg:object-[center_28%]"
           />
         )}
         {/* Readability scrims. Below `lg` the copy sits over the whole frame,
