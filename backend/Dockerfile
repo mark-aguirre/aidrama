@@ -24,11 +24,18 @@ COPY src ./src
 RUN mvn -B -q clean package -DskipTests
 
 # ---- Runner -------------------------------------------------------------
-# JRE only: smaller image, no build tools in the runtime.
+# JRE with FFmpeg for the dev-stub faststart remux. FFmpeg stays in the runtime
+# image because MediaRemuxer starts it after upload processing claims a job.
 FROM eclipse-temurin:21-jre AS runner
 WORKDIR /app
 
 ENV PORT=8080
+
+# The production container runs Linux. Install the command used by the remuxer
+# rather than inheriting a Windows-specific executable path from a local .env.
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends ffmpeg \
+  && rm -rf /var/lib/apt/lists/*
 
 # Run as a non-root user.
 RUN groupadd --system --gid 1001 spring \

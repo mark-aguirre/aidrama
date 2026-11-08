@@ -13,6 +13,9 @@ export const POLL_INTERVAL_MS = 3000;
 /** Extra attempts for `complete` when storage has not caught up yet (idempotent, safe to retry). */
 const COMPLETE_RETRIES = 3;
 const COMPLETE_RETRY_CODES = new Set(["UPLOAD_OBJECT_MISSING", "STORAGE_UNAVAILABLE"]);
+/** Cloudflare asks clients to wait at least one minute before retrying an origin 502. */
+const ORIGIN_502_RETRIES = 1;
+const ORIGIN_502_RETRY_DELAY_MS = 60_000;
 
 export const processingStatusKey = (videoId: string | null) =>
   ["processing-status", videoId] as const;
@@ -290,10 +293,9 @@ export async function completeWithRetry(uploadId: string, signal: AbortSignal) {
     try {
       return await api.completeUpload(uploadId, signal);
     } catch (error) {
-      const retryable =
-        isApiError(error) && COMPLETE_RETRY_CODES.has(error.code) && attempt < COMPLETE_RETRIES;
-      if (!retryable) throw error;
-      await sleep(1500 * (attempt + 1), signal);
+      const delay = completeRetryDelay(error, attempt);
+      if (delay === null) throw error;
+      await sleep(delay, signal);
     }
   }
 }
@@ -308,12 +310,25 @@ export async function completeMultipartWithRetry(
     try {
       return await api.completeMultipartUpload(uploadId, parts, signal);
     } catch (error) {
-      const retryable =
-        isApiError(error) && COMPLETE_RETRY_CODES.has(error.code) && attempt < COMPLETE_RETRIES;
-      if (!retryable) throw error;
-      await sleep(1500 * (attempt + 1), signal);
+      const delay = completeRetryDelay(error, attempt);
+      if (delay === null) throw error;
+      await sleep(delay, signal);
     }
   }
+}
+
+/**
+ * Upload confirmation is idempotent: retry only transient storage errors or a Cloudflare 502.
+ * A Cloudflare 502 has no application error code, so its HTTP status identifies it.
+ */
+function completeRetryDelay(error: unknown, attempt: number): number | null {
+  if (!isApiError(error)) return null;
+  if (COMPLETE_RETRY_CODES.has(error.code)) {
+    return attempt < COMPLETE_RETRIES ? 1500 * (attempt + 1) : null;
+  }
+  return error.status === 502 && attempt < ORIGIN_502_RETRIES
+    ? ORIGIN_502_RETRY_DELAY_MS
+    : null;
 }
 
 function toFailure(error: unknown, stage: UploadFailure["stage"]) {

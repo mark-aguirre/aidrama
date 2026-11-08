@@ -60,9 +60,8 @@ async function proxy(request: NextRequest): Promise<NextResponse> {
   const method = request.method.toUpperCase();
   const hasBody = method !== "GET" && method !== "HEAD";
 
-  let upstream: Response;
   try {
-    upstream = await fetch(target, {
+    const upstream = await fetch(target, {
       method,
       headers,
       body: hasBody ? await request.arrayBuffer() : undefined,
@@ -70,18 +69,21 @@ async function proxy(request: NextRequest): Promise<NextResponse> {
       redirect: "manual",
       signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
     });
+
+    // Reading a truncated upstream response can fail after fetch() has resolved.
+    // Keep it in this boundary so clients receive a valid JSON 502 rather than
+    // an incomplete origin response that Cloudflare turns into origin_bad_gateway.
+    const body = await upstream.arrayBuffer();
+    const response = new NextResponse(body, { status: upstream.status });
+    const contentType = upstream.headers.get("content-type");
+    if (contentType) response.headers.set("content-type", contentType);
+    const requestId = upstream.headers.get("x-request-id");
+    if (requestId) response.headers.set("x-request-id", requestId);
+    response.headers.set("Cache-Control", "no-store");
+    return response;
   } catch {
     return upstreamUnavailable();
   }
-
-  const body = await upstream.arrayBuffer();
-  const response = new NextResponse(body, { status: upstream.status });
-  const contentType = upstream.headers.get("content-type");
-  if (contentType) response.headers.set("content-type", contentType);
-  const requestId = upstream.headers.get("x-request-id");
-  if (requestId) response.headers.set("x-request-id", requestId);
-  response.headers.set("Cache-Control", "no-store");
-  return response;
 }
 
 export {

@@ -20,6 +20,9 @@ REMOTE_HOST="${REMOTE_HOST:-your-server-ip}"
 REMOTE_TMP="/tmp"
 ENV_FILE="${ENV_FILE:-.env}"
 REMOTE_ENV_FILE="$REMOTE_TMP/aidrama-backend.env"
+# The local .env may point at a Windows ffmpeg.exe. The Docker runtime is Linux
+# and ships its own ffmpeg binary; override this only for the container.
+CONTAINER_FFMPEG_PATH="${CONTAINER_FFMPEG_PATH:-ffmpeg}"
 
 # === Usage ===
 usage() {
@@ -28,7 +31,8 @@ usage() {
   echo "Environment variables:"
   echo "  REMOTE_USER  - SSH username (default: user)"
   echo "  REMOTE_HOST  - Server IP or hostname (default: your-server-ip)"
-  echo "  ENV_FILE     - Local env file passed to the container (default: .env)"
+  echo "  ENV_FILE               - Local env file passed to the container (default: .env)"
+  echo "  CONTAINER_FFMPEG_PATH  - Linux ffmpeg command/path inside the container (default: ffmpeg)"
   exit 1
 }
 
@@ -84,6 +88,7 @@ ssh "$REMOTE_USER@$REMOTE_HOST" bash -s <<EOF
     --network host \
     --env-file "$REMOTE_ENV_FILE" \
     -e PORT="$HOST_PORT" \
+    -e AIDRAMA_PROCESSING_DEV_STUB_FASTSTART_FFMPEG_PATH="$CONTAINER_FFMPEG_PATH" \
     "$IMAGE_NAME"
 
   echo "    Cleaning up transferred files..."

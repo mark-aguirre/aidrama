@@ -179,8 +179,12 @@ public class MediaRemuxer implements AutoCloseable {
                 .region(Region.of(s.region()))
                 .credentialsProvider(credentials(s))
                 .serviceConfiguration(S3Configuration.builder().pathStyleAccessEnabled(s.pathStyle()).build());
-        if (StringUtils.hasText(s.endpoint())) {
-            builder.endpointOverride(URI.create(s.endpoint()));
+        // Remuxing runs on the backend, so it must bypass the public Cloudflare
+        // media host just like the shared S3 client. A CDN can alter or reject
+        // signed S3 requests, while the internal endpoint reaches SeaweedFS directly.
+        String serverEndpoint = StringUtils.hasText(s.internalEndpoint()) ? s.internalEndpoint() : s.endpoint();
+        if (StringUtils.hasText(serverEndpoint)) {
+            builder.endpointOverride(URI.create(serverEndpoint));
         }
         return builder.build();
     }
