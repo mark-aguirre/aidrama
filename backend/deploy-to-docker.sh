@@ -20,6 +20,11 @@ REMOTE_HOST="${REMOTE_HOST:-your-server-ip}"
 REMOTE_TMP="/tmp"
 ENV_FILE="${ENV_FILE:-.env}"
 REMOTE_ENV_FILE="$REMOTE_TMP/aidrama-backend.env"
+# Shared user-defined bridge network the backend, SeaweedFS and frontend join so
+# they resolve each other by container name. The backend reaches storage at
+# http://$STORAGE_CONTAINER:8333 (see AIDRAMA_STORAGE_INTERNAL_ENDPOINT).
+DOCKER_NETWORK="${DOCKER_NETWORK:-aidrama-net}"
+STORAGE_CONTAINER="${STORAGE_CONTAINER:-seaweedfs}"
 # The local .env may point at a Windows ffmpeg.exe. The Docker runtime is Linux
 # and ships its own ffmpeg binary; override this only for the container.
 CONTAINER_FFMPEG_PATH="${CONTAINER_FFMPEG_PATH:-ffmpeg}"
@@ -33,6 +38,8 @@ usage() {
   echo "  REMOTE_HOST  - Server IP or hostname (default: your-server-ip)"
   echo "  ENV_FILE               - Local env file passed to the container (default: .env)"
   echo "  CONTAINER_FFMPEG_PATH  - Linux ffmpeg command/path inside the container (default: ffmpeg)"
+  echo "  DOCKER_NETWORK         - Shared bridge network for backend + storage (default: aidrama-net)"
+  echo "  STORAGE_CONTAINER      - SeaweedFS container name on that network (default: seaweedfs)"
   exit 1
 }
 
@@ -77,17 +84,24 @@ ssh "$REMOTE_USER@$REMOTE_HOST" bash -s <<EOF
   docker stop "$CONTAINER_NAME" 2>/dev/null || true
   docker rm "$CONTAINER_NAME" 2>/dev/null || true
 
+  echo "    Ensuring shared Docker network '$DOCKER_NETWORK' exists..."
+  docker network create "$DOCKER_NETWORK" 2>/dev/null || true
+  # SeaweedFS runs as its own container; attach it to the shared network so the
+  # backend can reach it by service name. Harmless if already connected.
+  docker network connect "$DOCKER_NETWORK" "$STORAGE_CONTAINER" 2>/dev/null || true
+
   echo "    Starting container: $CONTAINER_NAME on port $HOST_PORT"
-  # The storage origin is published on this host's LAN address. Host networking
-  # lets the backend's signed S3 HEAD requests reach it directly, avoiding the
-  # Docker bridge route that caused upload completion to return STORAGE_UNAVAILABLE.
-  # With --network host there is no -p mapping, so Spring Boot listens on the
-  # published host port itself.
+  # The backend and SeaweedFS share a user-defined bridge network ($DOCKER_NETWORK),
+  # which provides DNS by container name. The backend's signed S3 HEAD/multipart
+  # calls reach storage at http://$STORAGE_CONTAINER:8333 directly (no CDN), which
+  # is what AIDRAMA_STORAGE_INTERNAL_ENDPOINT in the env file points at. A bridge
+  # network needs an explicit -p mapping to publish the API on the host.
   docker run -d --name "$CONTAINER_NAME" \
     --restart unless-stopped \
-    --network host \
+    --network "$DOCKER_NETWORK" \
+    -p "$HOST_PORT:$CONTAINER_PORT" \
     --env-file "$REMOTE_ENV_FILE" \
-    -e PORT="$HOST_PORT" \
+    -e PORT="$CONTAINER_PORT" \
     -e AIDRAMA_PROCESSING_DEV_STUB_FASTSTART_FFMPEG_PATH="$CONTAINER_FFMPEG_PATH" \
     "$IMAGE_NAME"
 

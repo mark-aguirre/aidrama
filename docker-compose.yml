@@ -1,0 +1,78 @@
+# AI Drama: backend + frontend + SeaweedFS on one user-defined bridge network.
+#
+# This is the declarative alternative to the hand-rolled `docker run` flags in
+# backend/deploy-to-docker.sh and frontend/deploy-to-docker.sh. Every service
+# joins `aidrama-net`, so they resolve each other by service name over Docker's
+# built-in DNS instead of a host LAN IP:
+#
+#   backend  -> storage  : http://seaweedfs:8333   (signed S3 HEAD / multipart)
+#   frontend -> backend  : http://aidrama-backend:8080/api/v1  (SSR + /api/v1 proxy)
+#
+# Browser-facing URLs (AIDRAMA_STORAGE_ENDPOINT, AIDRAMA_STORAGE_PUBLIC_BASE_URL,
+# NEXT_PUBLIC_API_BASE_URL) are NOT on this network and must stay public origins:
+# the end user's browser never reaches a Docker service name.
+#
+# Usage:
+#   docker compose up -d --build
+# The backend reads its config from backend/.env (see env_file below).
+
+  # NOTE: SeaweedFS is NOT managed here. It already runs as its own `seaweedfs`
+  # container with its own launch flags and data volume. Compose only builds and
+  # runs the two app services below and joins them to aidrama-net; connect the
+  # existing SeaweedFS to the same network once with:
+  #     docker network connect aidrama-net seaweedfs
+  # The backend then reaches it at http://seaweedfs:8333.
+
+services:
+  aidrama-backend:
+    image: aidrama-backend
+    build:
+      context: ./backend
+    container_name: aidrama-backend
+    restart: unless-stopped
+    networks:
+      - aidrama-net
+    ports:
+      - "8012:8080"
+    # All config comes from the environment. backend/.env should set
+    # AIDRAMA_STORAGE_INTERNAL_ENDPOINT=http://seaweedfs:8333
+    env_file:
+      - ./backend/.env
+    environment:
+      PORT: "8080"
+      # The runtime image ships Linux ffmpeg; override any Windows path from .env.
+      AIDRAMA_PROCESSING_DEV_STUB_FASTSTART_FFMPEG_PATH: ffmpeg
+
+  aidrama-frontend:
+    image: aidrama-frontend
+    build:
+      context: ./frontend
+      args:
+        # Baked at build time. Leave NEXT_PUBLIC_API_BASE_URL empty so the
+        # browser uses the same-origin /api/v1 proxy. MEDIA_IMAGE_HOSTS is the
+        # public media host the next/image optimizer is allowed to fetch.
+        NEXT_PUBLIC_API_BASE_URL: ""
+        MEDIA_IMAGE_HOSTS: "${MEDIA_IMAGE_HOSTS:-medaidrama.apps-nest.com}"
+        ALLOW_LOCAL_IP_IMAGES: "true"
+    container_name: aidrama-frontend
+    restart: unless-stopped
+    depends_on:
+      - aidrama-backend
+    networks:
+      - aidrama-net
+    ports:
+      - "3013:3000"
+    environment:
+      PORT: "3000"
+      HOSTNAME: "0.0.0.0"
+      # Runtime: the Next.js server reaches the backend by service name.
+      API_INTERNAL_BASE_URL: "http://aidrama-backend:8080/api/v1"
+      ALLOW_LOCAL_IP_IMAGES: "true"
+
+networks:
+  # External: created outside compose (by the deploy script's `docker network
+  # create aidrama-net`) so the pre-existing seaweedfs container can be attached
+  # to the same network. Compose uses it rather than trying to own it.
+  aidrama-net:
+    name: aidrama-net
+    external: true

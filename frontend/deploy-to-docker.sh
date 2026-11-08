@@ -8,14 +8,16 @@ set -e
 IMAGE_NAME="aidrama-frontend"
 CONTAINER_NAME="aidrama-frontend"
 TAR_FILE="aidrama-frontend.tar"
-# HOST_PORT is the port the app listens on directly (host networking is used so
-# SSR can reach the backend on the LAN; see Step 4). CONTAINER_PORT is unused
-# under host networking and kept only for reference.
+# HOST_PORT is the port published on the host; CONTAINER_PORT is what the app
+# listens on inside the container. The container joins the shared bridge network
+# (see Step 4) so SSR / the /api/v1 proxy can reach the backend by container name.
 HOST_PORT=3013
 CONTAINER_PORT=3000
 REMOTE_USER="${REMOTE_USER:-user}"
 REMOTE_HOST="${REMOTE_HOST:-your-server-ip}"
 REMOTE_TMP="/tmp"
+# Shared user-defined bridge network, must match the backend's DOCKER_NETWORK.
+DOCKER_NETWORK="${DOCKER_NETWORK:-aidrama-net}"
 
 # Build-time app config, baked into the image during `docker build`.
 # Source of truth is the .env file next to this script. NEXT_PUBLIC_API_BASE_URL
@@ -100,16 +102,19 @@ ssh "$REMOTE_USER@$REMOTE_HOST" bash -s <<EOF
   docker stop "$CONTAINER_NAME" 2>/dev/null || true
   docker rm "$CONTAINER_NAME" 2>/dev/null || true
 
+  echo "    Ensuring shared Docker network '$DOCKER_NETWORK' exists..."
+  docker network create "$DOCKER_NETWORK" 2>/dev/null || true
+
   echo "    Starting container: $CONTAINER_NAME on port $HOST_PORT"
-  # Host networking: the container shares the host's network stack so the
-  # Next.js server (the /api/v1 proxy + SSR) can reach the backend at
-  # API_INTERNAL_BASE_URL, including a LAN address. With --network
-  # host there is no -p mapping; the app listens directly on the host, so PORT
-  # is set to the desired host port instead.
+  # The container joins the shared bridge network so the Next.js server (the
+  # /api/v1 proxy + SSR) can reach the backend by container name, e.g. set
+  # API_INTERNAL_BASE_URL=http://aidrama-backend:8080/api/v1 in ./.env. A bridge
+  # network needs an explicit -p mapping to publish the app on the host.
   docker run -d --name "$CONTAINER_NAME" \
     --restart unless-stopped \
-    --network host \
-    -e PORT="$HOST_PORT" \
+    --network "$DOCKER_NETWORK" \
+    -p "$HOST_PORT:$CONTAINER_PORT" \
+    -e PORT="$CONTAINER_PORT" \
     -e HOSTNAME=0.0.0.0 \
     -e API_INTERNAL_BASE_URL="$API_INTERNAL_BASE_URL" \
     -e ALLOW_LOCAL_IP_IMAGES="$ALLOW_LOCAL_IP_IMAGES" \

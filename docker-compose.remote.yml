@@ -1,0 +1,17 @@
+# Remote override used on the Docker host by deploy-compose-remote.sh.
+#
+# The main docker-compose.yml carries `build:` blocks for building on the dev
+# machine. On the server there is no source tree: the images are shipped as a
+# tar and loaded with `docker load`. This override pins the image tags that were
+# loaded. We start compose WITHOUT `--build`, and because the tagged images
+# already exist, compose uses them instead of building.
+#
+# Applied with:
+#   docker compose -f docker-compose.yml -f docker-compose.remote.yml up -d
+
+services:
+  aidrama-backend:
+    image: aidrama-backend:deploy
+
+  aidrama-frontend:
+    image: aidrama-frontend:deploy
