@@ -50,7 +50,7 @@ async function Backdrop({ source }: { source: BackdropSource }) {
   return (
     <div
       aria-hidden="true"
-      className="pointer-events-none absolute inset-x-0 -top-14 h-[560px] overflow-hidden lg:-top-16 lg:h-[600px]"
+      className="pointer-events-none absolute inset-x-0 -top-14 h-[260px] overflow-hidden lg:-top-16 lg:h-[600px]"
     >
       <div className="absolute inset-y-0 right-0 w-full lg:w-[70%]">
         <Image
@@ -71,9 +71,15 @@ async function Backdrop({ source }: { source: BackdropSource }) {
 }
 
 /**
- * Shared layout for Explore, Series, Films, and Shorts: backdrop art, an
- * eyebrow, a two-line headline (second line in the brand gradient), the lead,
- * then the page's filters and results as `children`.
+ * Shared layout for Explore, Series, Films, and Shorts. From `lg` up: backdrop
+ * art, an eyebrow, a two-line headline (second line in the brand gradient),
+ * the lead, then the page's filters and results as `children`. Below `lg` it
+ * is a collection screen: short backdrop and one line holding the headline
+ * (`title` only) and `count`, so the grid starts near the top. The one `h1`
+ * serves both; the eyebrow, accent line, and lead are hidden below `lg`.
+ *
+ * `count` is the live result count (see `VideoResultCount`); it renders only
+ * below `lg`.
  */
 export function DiscoveryPage({
   backdrop,
@@ -81,6 +87,7 @@ export function DiscoveryPage({
   title,
   accent,
   lead,
+  count,
   children,
 }: {
   backdrop: BackdropSource;
@@ -88,6 +95,7 @@ export function DiscoveryPage({
   title: string;
   accent: string;
   lead: string;
+  count?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
@@ -95,19 +103,33 @@ export function DiscoveryPage({
       <Suspense fallback={null}>
         <Backdrop source={backdrop} />
       </Suspense>
-      <div className="relative mx-auto w-full max-w-[1400px] px-4 pb-14 pt-10 sm:px-8 lg:pt-14">
-        <header className="mb-8 max-w-2xl">
-          <p className="animate-enter enter-delay-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+      <div className="relative mx-auto w-full max-w-[1400px] px-4 pb-14 pt-5 sm:px-8 lg:pt-14">
+        <header className="mb-8 max-w-2xl max-lg:mb-3 max-lg:flex max-lg:items-baseline max-lg:gap-3">
+          <p className="animate-enter enter-delay-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground max-lg:hidden">
             {eyebrow}
           </p>
-          <h1 className="animate-enter enter-delay-2 mt-2 font-display text-3xl leading-[1.1] text-foreground sm:text-4xl lg:text-[2.75rem]">
+          <h1 className="animate-enter enter-delay-2 mt-2 font-display text-2xl leading-[1.1] text-foreground max-lg:mt-0 lg:text-[2.75rem]">
             {title}
-            <br />
-            <span className="text-gradient">{accent}</span>
+            <br className="max-lg:hidden" />
+            <span className="text-gradient max-lg:hidden">{accent}</span>
           </h1>
-          <p className="animate-enter enter-delay-3 mt-3 text-sm text-foreground/75">
+          <p className="animate-enter enter-delay-3 mt-3 text-sm text-foreground/75 max-lg:hidden">
             {lead}
           </p>
+          {count && (
+            <div className="min-w-0 text-sm tabular-nums text-foreground/75 lg:hidden">
+              <Suspense
+                fallback={
+                  <span
+                    aria-hidden="true"
+                    className="inline-block h-4 w-16 animate-pulse rounded bg-surface-2 align-middle"
+                  />
+                }
+              >
+                {count}
+              </Suspense>
+            </div>
+          )}
         </header>
         {children}
       </div>

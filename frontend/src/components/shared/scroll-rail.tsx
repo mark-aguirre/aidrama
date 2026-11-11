@@ -57,7 +57,7 @@ export function ScrollRail({
           // off a card that lifts on hover and clip focus rings. The padding
           // gives them room; the matching negative margin cancels it out, so
           // the rail still lines up with everything above and below it.
-          "no-scrollbar -mx-1.5 -my-3 flex snap-x snap-mandatory gap-4 overflow-x-auto scroll-px-1.5 px-1.5 py-3 scroll-smooth",
+          "no-scrollbar -mx-1.5 -my-3 flex snap-x snap-mandatory gap-4 overflow-x-auto overscroll-x-contain scroll-px-1.5 px-1.5 py-3 scroll-smooth",
           className,
         )}
       >

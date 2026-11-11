@@ -15,7 +15,7 @@ export function MobileShellHeader() {
       fallback={
         <div
           aria-hidden="true"
-          className="h-14 border-b border-white/5 lg:hidden"
+          className="h-[calc(3.5rem+env(safe-area-inset-top))] border-b border-white/5 lg:hidden"
         />
       }
     >
@@ -65,14 +65,19 @@ export function PageShell({
         <Navbar />
       </div>
       <MobileShellHeader />
-      {bare ? (
-        children
-      ) : (
-        <main className="mx-auto w-full max-w-[1760px] flex-1 px-4 py-10 sm:px-8">
-          {children}
-        </main>
-      )}
-      <Footer />
+      {/* Only this region animates on a route change (phones); the header and
+          tab bar stay put. A transformed ancestor would also re-anchor `fixed`
+          descendants, which is why the chrome sits outside it. */}
+      <div className="animate-screen flex flex-1 flex-col">
+        {bare ? (
+          children
+        ) : (
+          <main className="mx-auto w-full max-w-[1760px] flex-1 px-4 py-10 sm:px-8">
+            {children}
+          </main>
+        )}
+        <Footer />
+      </div>
       <MobileShellTabBar />
     </div>
   );

@@ -1,5 +1,8 @@
 import { PageShell } from "@/components/layout/page-shell";
-import { SeriesListing } from "@/features/series/components/series-listing";
+import {
+  SeriesListing,
+  SeriesResultCount,
+} from "@/features/series/components/series-listing";
 import { DiscoveryPage } from "@/features/videos/components/discovery-hero";
 
 export const metadata = { title: "Series" };
@@ -14,6 +17,7 @@ export default function SeriesPage({ searchParams }: PageProps<"/series">) {
         title="Series"
         accent="stories that keep going"
         lead="Episodic AI dramas, organized into seasons and episodes."
+        count={<SeriesResultCount searchParams={searchParams} />}
       >
         <SeriesListing searchParams={searchParams} />
       </DiscoveryPage>

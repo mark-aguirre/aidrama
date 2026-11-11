@@ -29,3 +29,12 @@ export function formatDate(iso: string): string {
     day: "numeric",
   });
 }
+
+/** Format a count with its noun, e.g. `formatCount(1, "title", "titles")` -> "1 title". */
+export function formatCount(
+  count: number,
+  singular: string,
+  plural: string,
+): string {
+  return `${new Intl.NumberFormat("en").format(count)} ${count === 1 ? singular : plural}`;
+}

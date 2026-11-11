@@ -35,3 +35,9 @@
     animation: none;
   }
 }
+
+/* Set by SheetGrabber after a swipe-to-dismiss: the sheet is already off
+   screen, so skip the exit slide instead of snapping back and replaying it. */
+[data-swipe-dismissed="true"] {
+  animation: none !important;
+}

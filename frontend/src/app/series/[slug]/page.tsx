@@ -77,7 +77,7 @@ export default function SeriesDetailPage({
 }: PageProps<"/series/[slug]">) {
   return (
     <PageShell>
-      <Suspense fallback={<VideoGridSkeleton />}>
+      <Suspense fallback={<VideoGridSkeleton wide />}>
         <SeriesDetail params={params} />
       </Suspense>
     </PageShell>

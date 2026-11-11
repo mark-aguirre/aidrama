@@ -305,11 +305,20 @@ export const api = {
    * returns a pagination envelope; this unwraps `data`.
    */
   async listSeries(query: { genre?: string } = {}): Promise<Series[]> {
-    const page = await requestJson(
+    return (await api.listSeriesPage(query)).data;
+  },
+
+  /**
+   * Same request as `listSeries`, keeping the pagination envelope so callers
+   * can show `pagination.totalItems`, the true total across pages.
+   */
+  async listSeriesPage(
+    query: { genre?: string } = {},
+  ): Promise<Paginated<Series>> {
+    return requestJson(
       { path: "/series", query: { genre: query.genre } },
       asContract<Paginated<Series>>,
     );
-    return page.data;
   },
 
   /** A series plus its episodes. GET /series/{slug}; a 404 resolves to null. */

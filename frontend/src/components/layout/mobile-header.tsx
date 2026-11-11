@@ -1,28 +1,29 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
+import { Bell, Search, type LucideIcon } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Logo } from "./logo";
-import { MobileNavSheet } from "./mobile-nav-sheet";
 
-/** Tab roots show only the brand; deeper pages add the section title. */
+/** Short line under the wordmark, taken from the product description. */
+const BRAND_TAGLINE = "Watch, create, share";
+
+/** Tab roots show the brand and tagline; deeper pages add the section title. */
 const TAB_ROOTS: ReadonlySet<string> = new Set([
   "/",
-  "/explore",
-  "/search",
+  "/shorts",
   "/library",
-  "/studio/upload",
+  "/profile",
 ]);
 
 /** Static path-to-title map. Unmapped paths show no title; the page has its own h1. */
 const TITLES: Readonly<Record<string, string>> = {
   "/explore": "Browse",
   "/search": "Search",
-  "/library": "Library",
   "/series": "Series",
   "/movies": "Films",
-  "/shorts": "Shorts",
   "/notifications": "Notifications",
   "/studio": "Studio",
   "/studio/upload": "Upload",
@@ -51,11 +52,14 @@ function useScrollHidden(): boolean {
 
   React.useEffect(() => {
     const query = window.matchMedia("(prefers-reduced-motion: reduce)");
-    let lastY = window.scrollY;
+    // Below `lg` <body> is the scroll region (see globals.css); the header is
+    // hidden at `lg` and up, so nothing needs to listen to the window there.
+    const scroller = document.body;
+    let lastY = scroller.scrollTop;
     let moved = 0;
 
     function onScroll() {
-      const y = window.scrollY;
+      const y = scroller.scrollTop;
       const delta = y - lastY;
       lastY = y;
 
@@ -79,10 +83,10 @@ function useScrollHidden(): boolean {
       if (query.matches) setHidden(false);
     }
 
-    window.addEventListener("scroll", onScroll, { passive: true });
+    scroller.addEventListener("scroll", onScroll, { passive: true });
     query.addEventListener("change", onMotionPreferenceChange);
     return () => {
-      window.removeEventListener("scroll", onScroll);
+      scroller.removeEventListener("scroll", onScroll);
       query.removeEventListener("change", onMotionPreferenceChange);
     };
   }, []);
@@ -90,9 +94,34 @@ function useScrollHidden(): boolean {
   return hidden;
 }
 
+function HeaderIconLink({
+  href,
+  label,
+  icon: Icon,
+  current,
+}: {
+  href: string;
+  label: string;
+  icon: LucideIcon;
+  current: boolean;
+}) {
+  return (
+    <Link
+      href={href}
+      aria-label={label}
+      aria-current={current ? "page" : undefined}
+      className="flex size-11 items-center justify-center rounded-full text-foreground transition-[transform,opacity] duration-150 ease-out active:scale-90 active:opacity-70 motion-reduce:active:scale-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+    >
+      <Icon className="size-6" aria-hidden="true" />
+    </Link>
+  );
+}
+
 /**
  * Compact top bar for phones (below `lg`). The brand logo and app name always
- * show; deeper pages add the section title. The account control is on the right.
+ * show (with a short tagline on tab roots); deeper pages add the section
+ * title. Search and notifications sit on the right. The bell shows no unread
+ * dot: notifications are still mock data, so there is no real count to show.
  */
 export function MobileHeader() {
   const pathname = usePathname();
@@ -104,19 +133,33 @@ export function MobileHeader() {
   return (
     <header
       className={cn(
-        "sticky top-0 z-30 border-b border-white/5 bg-background/60 backdrop-blur-xl transition-transform duration-150 ease-out [transform:translateZ(0)] [backface-visibility:hidden] focus-within:translate-y-0 motion-reduce:transition-none lg:hidden",
+        "sticky top-0 z-30 border-b border-white/5 bg-background/60 pt-[env(safe-area-inset-top)] backdrop-blur-xl transition-transform duration-150 ease-out [transform:translateZ(0)] [backface-visibility:hidden] focus-within:translate-y-0 motion-reduce:transition-none lg:hidden",
         hidden && "-translate-y-full",
       )}
     >
       <div className="flex h-14 items-center gap-1 px-4">
-        <Logo className="shrink-0" />
+        <Logo
+          className="min-w-0 shrink"
+          tagline={isRoot ? BRAND_TAGLINE : undefined}
+        />
         {!isRoot && title && (
           <span className="min-w-0 truncate pl-1 text-base font-semibold text-foreground">
             {title}
           </span>
         )}
-        <div className="ml-auto -mr-2 shrink-0">
-          <MobileNavSheet />
+        <div className="-mr-2.5 ml-auto flex shrink-0 items-center">
+          <HeaderIconLink
+            href="/search"
+            label="Search"
+            icon={Search}
+            current={pathname === "/search"}
+          />
+          <HeaderIconLink
+            href="/notifications"
+            label="Notifications"
+            icon={Bell}
+            current={pathname === "/notifications"}
+          />
         </div>
       </div>
     </header>

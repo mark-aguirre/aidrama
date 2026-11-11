@@ -23,6 +23,11 @@ const VIEWS = [
  * (frontend-engineer skill, section 9). Grid is the default layout, so only
  * `view=list` is ever written. Pass `sortable={false}` where the API has no
  * sort for the listing (GET /series is always newest first).
+ *
+ * Below `lg` the sort row is one compact line: the "Sort by" label is
+ * screen-reader only and the controls are 44px. The grid/list toggle stays
+ * reachable on mobile so a visitor on a shared `?view=list` URL can always
+ * switch back to the grid.
  */
 export function FilterBar({ sortable = true }: { sortable?: boolean }) {
   const router = useRouter();
@@ -40,13 +45,13 @@ export function FilterBar({ sortable = true }: { sortable?: boolean }) {
   }
 
   return (
-    <div className="mb-8 flex flex-col gap-5">
+    <div className="mb-8 flex flex-col gap-5 max-lg:mb-4 max-lg:gap-3">
       {/* On mobile the pills are one horizontal scroll row so they don't eat
           the screen; from sm up they wrap onto new lines as before. */}
       <div
         role="group"
         aria-label="Filter by genre"
-        className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0"
+        className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto overscroll-x-contain px-4 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0"
       >
         <GenrePill
           label="All"
@@ -67,7 +72,10 @@ export function FilterBar({ sortable = true }: { sortable?: boolean }) {
       <div className="flex items-center gap-4">
         {sortable && (
         <div className="flex items-center gap-3">
-          <label htmlFor="sort" className="text-sm text-muted-foreground">
+          <label
+            htmlFor="sort"
+            className="text-sm text-muted-foreground max-lg:sr-only"
+          >
             Sort by
           </label>
           <div className="relative">
@@ -75,7 +83,7 @@ export function FilterBar({ sortable = true }: { sortable?: boolean }) {
               id="sort"
               value={activeSort}
               onChange={(e) => setParam("sort", e.target.value)}
-              className="h-10 w-48 appearance-none rounded-md border border-input bg-surface/80 pl-3 pr-9 text-sm text-foreground backdrop-blur-sm transition-colors hover:border-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              className="h-11 w-44 appearance-none lg:h-10 lg:w-48 rounded-md border border-input bg-surface/80 pl-3 pr-9 text-sm text-foreground backdrop-blur-sm transition-colors hover:border-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             >
               {SORTS.map((s) => (
                 <option key={s.key} value={s.key}>
@@ -94,7 +102,7 @@ export function FilterBar({ sortable = true }: { sortable?: boolean }) {
         <div
           role="group"
           aria-label="Layout"
-          className="ml-auto flex items-center gap-0.5 rounded-md border border-input bg-surface/80 p-0.5 backdrop-blur-sm"
+          className="ml-auto flex items-center gap-0.5 rounded-md border border-input bg-surface/80 backdrop-blur-sm lg:p-0.5"
         >
           {VIEWS.map(({ key, label, icon: Icon }) => {
             const active = activeView === key;
@@ -106,7 +114,7 @@ export function FilterBar({ sortable = true }: { sortable?: boolean }) {
                 aria-pressed={active}
                 onClick={() => setParam("view", key === "grid" ? "" : key)}
                 className={cn(
-                  "flex size-8 items-center justify-center rounded transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                  "flex size-11 items-center justify-center rounded transition-colors lg:size-8 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                   active
                     ? "bg-accent text-primary"
                     : "text-muted-foreground hover:text-foreground",

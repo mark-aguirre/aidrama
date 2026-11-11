@@ -4,6 +4,8 @@ import { cn } from "@/lib/utils";
 import type { Series } from "@/types/domain";
 import { CardMenu } from "@/features/videos/components/card-menu";
 import {
+  CARD_PRESS,
+  COLLECTION_POSTER,
   POSTER_FRAME,
   PosterArt,
   STRETCHED_LINK,
@@ -24,14 +26,19 @@ function seriesMeta(series: Series): string {
 function SeriesPoster({
   series,
   sizes,
+  collection = false,
   className,
 }: {
   series: Series;
   sizes: string;
+  /** Portrait frame and a smaller tag below `lg`. */
+  collection?: boolean;
   className?: string;
 }) {
   return (
-    <div className={cn(POSTER_FRAME, className)}>
+    <div
+      className={cn(POSTER_FRAME, collection && COLLECTION_POSTER, className)}
+    >
       {series.posterUrl ? (
         <PosterArt src={series.posterUrl} sizes={sizes} />
       ) : (
@@ -40,7 +47,13 @@ function SeriesPoster({
         </div>
       )}
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
-      <span className="absolute bottom-2.5 left-2.5 flex items-center gap-1.5 rounded bg-black/70 px-1.5 py-0.5 text-[11px] font-semibold text-white">
+      <span
+        className={cn(
+          "absolute bottom-2.5 left-2.5 flex items-center gap-1.5 rounded bg-black/70 px-1.5 py-0.5 text-[11px] font-semibold text-white",
+          collection &&
+            "max-lg:bottom-1.5 max-lg:left-1.5 max-lg:gap-1 max-lg:px-1 max-lg:text-[10px]",
+        )}
+      >
         <Layers className="size-3" aria-hidden="true" />
         Series
       </span>
@@ -51,25 +64,28 @@ function SeriesPoster({
 /**
  * A series tile in the grid layout, styled like the video cards: the title
  * link is stretched over the tile, and the ⋮ menu sits beside the title.
+ * Below `lg` it is a portrait collection tile: two-line title, no meta line,
+ * no ⋮ menu (too narrow in a 3-column grid).
  */
 export function SeriesCard({ series }: { series: Series }) {
   const href = seriesHref(series);
 
   return (
-    <article className="group relative">
+    <article className={cn("group relative", CARD_PRESS)}>
       <SeriesPoster
         series={series}
-        sizes="(max-width: 768px) 70vw, 340px"
+        collection
+        sizes="(max-width: 640px) 34vw, (max-width: 1023px) 24vw, 340px"
         className="group-hover:-translate-y-1"
       />
-      <div className="mt-2.5 flex items-start gap-1">
+      <div className="mt-2.5 flex items-start gap-1 max-lg:mt-1.5">
         <div className="min-w-0 flex-1">
-          <h3 className="line-clamp-1 text-sm font-semibold text-foreground transition-colors group-hover:text-primary">
+          <h3 className="line-clamp-2 text-sm font-semibold text-foreground transition-colors group-hover:text-primary max-lg:break-words max-lg:text-xs max-lg:leading-snug lg:line-clamp-1">
             <Link href={href} className={STRETCHED_LINK}>
               {series.title}
             </Link>
           </h3>
-          <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground tabular-nums">
+          <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground tabular-nums max-lg:hidden">
             {seriesMeta(series)}
           </p>
         </div>
@@ -77,7 +93,7 @@ export function SeriesCard({ series }: { series: Series }) {
           title={series.title}
           href={href}
           openLabel="View series"
-          className="-mr-2"
+          className="-mr-2 max-lg:hidden"
         />
       </div>
     </article>

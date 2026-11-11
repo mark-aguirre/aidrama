@@ -10,6 +10,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { SheetGrabber } from "@/components/ui/sheet-grabber";
 import "@/components/ui/sheet.css";
 import "./sign-in-dropdown.css";
 import "./sign-in-glossy.css";
@@ -71,6 +72,9 @@ export function SignInDropdown({
     onModeChange(next);
   }
 
+  const panelRef = React.useRef<HTMLDivElement>(null);
+  const closeRef = React.useRef<HTMLButtonElement>(null);
+
   const showSignUp = mode === "sign-up";
 
   return (
@@ -78,9 +82,17 @@ export function SignInDropdown({
       <DialogPrimitive.Portal>
         <DialogOverlay className="bg-black/60 sm:bg-transparent sm:backdrop-blur-none" />
         <DialogPrimitive.Content
+          ref={panelRef}
           onCloseAutoFocus={onCloseAutoFocus}
           className="signin-panel signin-glossy fixed inset-x-0 bottom-0 z-50 max-h-[85dvh] overflow-y-auto overscroll-contain rounded-t-2xl border-t border-border bg-popover p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] text-popover-foreground focus-visible:outline-none sm:inset-x-auto sm:bottom-auto sm:right-[max(2rem,calc((100vw-1400px)/2+2rem))] sm:top-[4.25rem] sm:max-h-[calc(100dvh-5.5rem)] sm:w-[22rem] sm:rounded-lg sm:border sm:shadow-xl"
         >
+          {/* Phones only: swipe the handle down to dismiss. It overlaps the
+              panel padding, so the layout is unchanged. */}
+          <SheetGrabber
+            targetRef={panelRef}
+            onDismiss={() => closeRef.current?.click()}
+            className="-mx-4 -mt-4 -mb-3 w-auto sm:hidden"
+          />
           {showSignUp && registeredEmail ? (
             <>
               <div className="mb-4 flex flex-col gap-1">
@@ -137,8 +149,9 @@ export function SignInDropdown({
           )}
 
           <DialogPrimitive.Close
+            ref={closeRef}
             aria-label="Close"
-            className="absolute right-2 top-2 inline-flex size-11 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:right-3 sm:top-3 sm:size-9"
+            className="absolute right-2 top-2 z-20 inline-flex size-11 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:right-3 sm:top-3 sm:size-9"
           >
             <X className="size-4" aria-hidden="true" />
           </DialogPrimitive.Close>

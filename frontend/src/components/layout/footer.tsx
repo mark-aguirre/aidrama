@@ -8,10 +8,15 @@ const links = [
   { href: "/shorts", label: "Shorts" },
 ];
 
-/** Site footer, matched to the landing mockup. */
+/**
+ * Site footer, matched to the landing mockup. Desktop only: below `lg` the
+ * app runs as an installed-app shell, where a footer costs a quarter of the
+ * screen to repeat the header's brand and four links that the bottom tab bar
+ * and the profile screen already carry.
+ */
 export function Footer() {
   return (
-    <footer className="mt-16 border-t border-white/5">
+    <footer className="mt-16 hidden border-t border-white/5 lg:block">
       <div className="mx-auto flex max-w-[1760px] flex-col gap-6 px-4 py-8 sm:px-8 md:flex-row md:items-center">
         <div className="flex items-center gap-6">
           <Logo />

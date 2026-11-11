@@ -1,6 +1,9 @@
 import { PageShell } from "@/components/layout/page-shell";
 import { DiscoveryPage } from "@/features/videos/components/discovery-hero";
-import { VideoListing } from "@/features/videos/components/video-listing";
+import {
+  VideoListing,
+  VideoResultCount,
+} from "@/features/videos/components/video-listing";
 
 export const metadata = { title: "Shorts" };
 
@@ -14,6 +17,9 @@ export default function ShortsPage({ searchParams }: PageProps<"/shorts">) {
         title="Shorts"
         accent="whole stories in minutes"
         lead="Short-form AI films, under a few minutes each."
+        count={
+          <VideoResultCount type="SHORT" searchParams={searchParams} />
+        }
       >
         <VideoListing
           type="SHORT"

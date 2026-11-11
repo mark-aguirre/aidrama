@@ -39,6 +39,21 @@ function videoMeta(video: Video): string {
 export const STRETCHED_LINK =
   "outline-none after:absolute after:inset-0 after:rounded-media focus-visible:after:ring-2 focus-visible:after:ring-ring focus-visible:after:ring-offset-4 focus-visible:after:ring-offset-background";
 
+/**
+ * Touch-down feedback for grid and rail cards on phones: a small press-in and
+ * dim, like a native tile. `:active` also matches while the stretched link
+ * inside is pressed. Dropped for reduced motion.
+ */
+export const CARD_PRESS =
+  "max-lg:transition-[transform,opacity] max-lg:duration-150 max-lg:ease-out max-lg:active:scale-[0.97] max-lg:active:opacity-85 motion-reduce:active:scale-100";
+
+/**
+ * Portrait frame for the collection grids below `lg` (Explore, Films, Shorts,
+ * Series). Desktop keeps the 16:9 frame; the frame class is applied on top of
+ * `POSTER_FRAME`. 3:4 matches most of the real catalogue art (ratio 0.72-0.81).
+ */
+export const COLLECTION_POSTER = "max-lg:aspect-[3/4]";
+
 /** Ring and hover treatment shared by every 16:9 poster frame. */
 export const POSTER_FRAME =
   "relative aspect-video overflow-hidden rounded-media bg-surface-2 ring-1 ring-white/5 transition-all duration-200 group-hover:ring-2 group-hover:ring-primary";
@@ -69,12 +84,15 @@ function PosterFrame({
   video,
   rank,
   featured,
+  collection = false,
   sizes,
   className,
 }: {
   video: Video;
   rank?: number;
   featured?: boolean;
+  /** Portrait frame with smaller badges and no play affordance below `lg`. */
+  collection?: boolean;
   sizes: string;
   className?: string;
 }) {
@@ -82,7 +100,9 @@ function PosterFrame({
     video.durationSeconds > 0 ? formatDuration(video.durationSeconds) : null;
 
   return (
-    <div className={cn(POSTER_FRAME, className)}>
+    <div
+      className={cn(POSTER_FRAME, collection && COLLECTION_POSTER, className)}
+    >
       {video.thumbnailUrl ? (
         <PosterArt src={video.thumbnailUrl} sizes={sizes} />
       ) : (
@@ -104,13 +124,25 @@ function PosterFrame({
         </span>
       ) : (
         featured && (
-          <span className="absolute left-2.5 top-2.5 rounded-full bg-primary px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em] text-white shadow-md shadow-black/30">
+          <span
+            className={cn(
+              "absolute left-2.5 top-2.5 rounded-full bg-primary px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em] text-white shadow-md shadow-black/30",
+              collection &&
+                "max-lg:left-1.5 max-lg:top-1.5 max-lg:px-1.5 max-lg:text-[9px] max-lg:tracking-wider",
+            )}
+          >
             Featured
           </span>
         )
       )}
       {duration && (
-        <span className="absolute bottom-2.5 right-2.5 rounded bg-black/70 px-1.5 py-0.5 text-[11px] font-semibold tabular-nums text-white">
+        <span
+          className={cn(
+            "absolute bottom-2.5 right-2.5 rounded bg-black/70 px-1.5 py-0.5 text-[11px] font-semibold tabular-nums text-white",
+            collection &&
+              "max-lg:bottom-1.5 max-lg:right-1.5 max-lg:px-1 max-lg:text-[10px]",
+          )}
+        >
           {duration}
         </span>
       )}
@@ -118,7 +150,12 @@ function PosterFrame({
       {/* Play affordance arrives on hover: fade + a small scale-up so it
           reads as surfacing, not blinking on. The pl shift optically
           centres the right-pointing triangle in its circle. */}
-      <span className="pointer-events-none absolute inset-0 flex items-center justify-center opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+      <span
+        className={cn(
+          "pointer-events-none absolute inset-0 flex items-center justify-center opacity-0 transition-opacity duration-200 group-hover:opacity-100",
+          collection && "max-lg:hidden",
+        )}
+      >
         <span className="flex size-11 scale-90 items-center justify-center rounded-full bg-primary/90 pl-0.5 shadow-lg shadow-primary/30 transition-transform duration-200 group-hover:scale-100 motion-reduce:transition-none motion-reduce:group-hover:scale-100">
           <Play className="size-5 fill-white text-white" aria-hidden="true" />
         </span>
@@ -134,41 +171,63 @@ function PosterFrame({
  * actions beside the title (grids only; rails stay compact).
  * Hover lifts the frame and adds a pink ring; the artwork itself never zooms,
  * so nothing on the poster is cropped out on hover.
+ * `collection` is the grid tile: below `lg` a portrait poster with a two-line
+ * title, no meta line, and no ⋮ menu (too narrow in a 3-column grid; Share
+ * stays on the watch page). The stretched title link still covers the tile.
  */
 export function VideoCard({
   video,
   rank,
   featured = false,
   menu = false,
+  collection = false,
   className,
 }: {
   video: Video;
   rank?: number;
   featured?: boolean;
   menu?: boolean;
+  collection?: boolean;
   className?: string;
 }) {
   const meta = videoMeta(video);
 
   return (
-    <article className={cn("group relative", className)}>
+    <article className={cn("group relative", CARD_PRESS, className)}>
       <PosterFrame
         video={video}
         rank={rank}
         featured={featured}
-        sizes="(max-width: 768px) 70vw, 340px"
+        collection={collection}
+        sizes={
+          collection
+            ? "(max-width: 640px) 34vw, (max-width: 1023px) 24vw, 340px"
+            : "(max-width: 768px) 70vw, 340px"
+        }
         className="group-hover:-translate-y-1"
       />
 
-      <div className="mt-2.5 flex items-start gap-1">
+      <div className={cn("mt-2.5 flex items-start gap-1", collection && "max-lg:mt-1.5")}>
         <div className="min-w-0 flex-1">
-          <h3 className="line-clamp-1 text-sm font-semibold text-foreground transition-colors group-hover:text-primary">
+          <h3
+            className={cn(
+              "text-sm font-semibold text-foreground transition-colors group-hover:text-primary",
+              collection
+                ? "line-clamp-2 max-lg:break-words max-lg:text-xs max-lg:leading-snug lg:line-clamp-1"
+                : "line-clamp-1",
+            )}
+          >
             <Link href={watchHref(video)} className={STRETCHED_LINK}>
               {video.title}
             </Link>
           </h3>
           {meta && (
-            <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
+            <p
+              className={cn(
+                "mt-0.5 line-clamp-1 text-xs text-muted-foreground",
+                collection && "max-lg:hidden",
+              )}
+            >
               {meta}
             </p>
           )}
@@ -178,7 +237,7 @@ export function VideoCard({
             title={video.title}
             href={watchHref(video)}
             openLabel="Watch now"
-            className="-mr-2"
+            className={cn("-mr-2", collection && "max-lg:hidden")}
           />
         )}
       </div>

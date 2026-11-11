@@ -114,6 +114,85 @@ body {
 }
 
 /*
+ * Native app feel, phones and small tablets only (below Tailwind `lg`, where
+ * the mobile header and tab bar replace the desktop navbar). These rules are
+ * deliberately unlayered so they beat Tailwind utilities; `lg` and up are
+ * untouched.
+ */
+@media (width < 64rem) {
+  /*
+   * App shell: the document never scrolls. <body> is the one scroll region,
+   * so the mobile URL bar can't collapse and shift the fixed header and tab
+   * bar, and the page can't rubber-band or pull-to-refresh. `dvh` tracks the
+   * visible viewport. The sticky mobile header and fixed tab bar sit inside
+   * and over this region. Scroll listeners must target document.body here.
+   */
+  html {
+    height: 100dvh;
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
+  body {
+    height: 100dvh;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior-y: none;
+    scrollbar-width: none;
+  }
+  body::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* No grey flash on tap, and no double-tap-zoom delay (pinch zoom stays). */
+  html {
+    -webkit-tap-highlight-color: transparent;
+  }
+  a,
+  button,
+  input,
+  select,
+  textarea,
+  label,
+  summary,
+  [role="button"],
+  [role="tab"],
+  [role^="menuitem"] {
+    touch-action: manipulation;
+  }
+
+  /*
+   * Chrome and controls aren't text: no long-press selection or callout.
+   * Titles, descriptions and comments keep normal selection; links and images
+   * only lose the iOS preview/save callout.
+   */
+  nav,
+  button,
+  summary,
+  label[for],
+  [role="button"],
+  [role="tab"],
+  [role^="menuitem"] {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
+  a,
+  img {
+    -webkit-touch-callout: none;
+  }
+
+  /*
+   * iOS Safari zooms the page when a field under 16px takes focus. Pinch
+   * zoom stays enabled; the fields just never trigger it.
+   */
+  input:not([type="checkbox"], [type="radio"], [type="range"], [type="file"], [type="color"]),
+  select,
+  textarea {
+    font-size: 1rem;
+  }
+}
+
+/*
  * Motion ------------------------------------------------------------------
  *
  * House easing. A gentle spring-like ease-out for arrivals (fast start,
@@ -159,6 +238,30 @@ body {
 .enter-delay-3 { animation-delay: 0.19s; }
 .enter-delay-4 { animation-delay: 0.26s; }
 .enter-delay-5 { animation-delay: 0.34s; }
+
+/*
+ * Screen change: the content region of a new route slides up 8px while it
+ * fades in, like pushing an app screen. Phones only (the chrome stays put;
+ * only content animates). Opacity and transform only, no blur, because the
+ * whole screen animates. The final frame is the natural state, so reduced
+ * motion just shows the content in place.
+ */
+@keyframes screen-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (width < 64rem) {
+  .animate-screen {
+    animation: screen-enter 0.28s var(--ease-arrive) backwards;
+  }
+}
 
 /*
  * Hero backdrop settle: a slow, barely-perceptible push-in that gives the
